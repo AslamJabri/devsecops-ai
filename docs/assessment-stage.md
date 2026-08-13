@@ -11,6 +11,9 @@ The Jenkins job now assesses only the checked-out Project 25 repository with thr
 | E008 | Docker | Built local image metadata | Record image identity for repeatability |
 | E009 | Trivy | Known vulnerabilities in the built image | Record results; do not block the baseline build |
 | E010 | Shell wrapper | Docker build/inspect and Trivy exit codes | Supports repeatable before/after comparison |
+| E011 | OWASP ZAP baseline | Passive DAST report for the local demo app | Record results; do not block the baseline build |
+| E012 | OWASP ZAP baseline | Human-readable passive DAST report | Review during evidence analysis |
+| E013 | Shell wrapper | ZAP target, mode, and exit code | Confirms local-only scan boundary |
 
 All scans are local to the Jenkins workspace. Gitleaks redacts any matched value in its report. The pipeline records tool output first; mitigation policy gates are deliberately deferred to the Validate phase. An exit code of `1` in E007 can mean a scanner found a review item; read the matching E004–E006 report before making a conclusion.
 
@@ -26,3 +29,7 @@ Before cloning, the pipeline clears only its own Jenkins workspace. This prevent
 ## Container scan boundary
 
 The Jenkins container is given the local Docker Desktop socket only for this lab's build-and-scan stage. It builds `project25-demo-app:<build number>` from `demo-app/`, scans it locally with Trivy, and does not push it to any registry. This is privileged local-lab access; do not use this Compose configuration for a shared or production Jenkins server. The Docker image pins Trivy to a published release so the demo remains reproducible.
+
+## Passive DAST boundary
+
+The final assessment stage launches OWASP ZAP's baseline scan in a temporary container on the Compose network. Its only target is `http://demo-app:5000`, the local demo service. ZAP's baseline scan spiders the target and reports passive observations; it does not perform active attacks. The ZAP reports are evidence for human review, not automatic vulnerability claims.

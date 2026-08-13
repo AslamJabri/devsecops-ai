@@ -13,6 +13,7 @@ services:
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-project25-local-demo-only}
       PROJECT25_GIT_URL: ${PROJECT25_GIT_URL:-https://github.com/AslamJabri/devsecops-ai.git}
       PROJECT25_GIT_BRANCH: ${PROJECT25_GIT_BRANCH:-main}
+      PROJECT25_DOCKER_NETWORK: project25-devsecops-lab_default
       JAVA_OPTS: -Djenkins.install.runSetupWizard=false
     volumes:
       - jenkins_home:/var/jenkins_home
