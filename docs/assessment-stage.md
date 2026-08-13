@@ -14,6 +14,8 @@ The Jenkins job now assesses only the checked-out Project 25 repository with thr
 
 All scans are local to the Jenkins workspace. Gitleaks redacts any matched value in its report. The pipeline records tool output first; mitigation policy gates are deliberately deferred to the Validate phase. An exit code of `1` in E007 can mean a scanner found a review item; read the matching E004–E006 report before making a conclusion.
 
+Before cloning, the pipeline clears only its own Jenkins workspace. This prevents a stale or incomplete `.git` directory from affecting repeatability; it does not alter the GitHub repository or the persistent evidence folder.
+
 ## Live-demo flow
 
 1. Build the updated Jenkins image.

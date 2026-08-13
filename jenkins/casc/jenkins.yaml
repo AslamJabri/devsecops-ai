@@ -31,6 +31,8 @@ jobs:
               stages {
                 stage('Confirm lab scope') {
                   steps {
+                    // The lab always assesses a clean checkout of the selected branch.
+                    deleteDir()
                     git branch: env.PROJECT25_GIT_BRANCH, url: env.PROJECT25_GIT_URL
                     sh "test -f demo-app/Jenkinsfile && test -f baseline/simulated-findings.json"
                     echo "Local lab only; test data only; no external targets."
