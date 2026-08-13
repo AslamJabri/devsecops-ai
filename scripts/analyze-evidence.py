@@ -34,6 +34,11 @@ def main():
     gitleaks = load_json(scan_dir / "E004-gitleaks.json", [])
     bandit = load_json(scan_dir / "E005-bandit.json", {"results": []})
     pip_audit = load_json(scan_dir / "E006-pip-audit.json", [])
+    if isinstance(pip_audit, dict):
+        pip_audit = pip_audit.get("dependencies", [])
+    if not isinstance(pip_audit, list):
+        pip_audit = []
+
     scan_exit_codes = load_json(scan_dir / "E007-scan-exit-codes.json", {})
     trivy = load_json(container_dir / "E009-trivy-image.json", {"Results": []})
     container_exit_codes = load_json(
