@@ -2,7 +2,7 @@ FROM jenkins/jenkins:lts-jdk17
 
 USER root
 ARG GITLEAKS_VERSION=8.18.1
-ARG TRIVY_VERSION=0.57.1
+ARG TRIVY_VERSION=0.70.0
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates git python3-pip python3-venv docker.io \
