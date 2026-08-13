@@ -14,6 +14,8 @@ The public repository URL and branch are configured in `.env` as `PROJECT25_GIT_
 
 The assessment stages run Gitleaks, Bandit, and pip-audit against the cloned local workspace, then build the local demo image and scan it with Trivy. They archive E004–E010. See [the assessment notes](docs/assessment-stage.md).
 
+The Jenkins image includes a pinned Docker command-line client and uses Docker Desktop through the local socket mount only for the container assessment stage.
+
 ## Run it on macOS
 
 Prerequisite: [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/) must be running, with at least 4 GB memory allocated.
