@@ -91,7 +91,29 @@ Return a concise Markdown report with:
             "external_data_sent": True,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+
+        try:
+            api_message = json.loads(error_body).get("error", {}).get(
+                "message", error_body[:500]
+            )
+        except json.JSONDecodeError:
+            api_message = error_body[:500]
+
+        report_path.write_text(
+            "# AI Security Analysis\n\nAI request failed. Review E017 metadata.\n",
+            encoding="utf-8",
+        )
+        metadata = {
+            "evidence_id": "E017",
+            "status": "error",
+            "http_status": exc.code,
+            "api_error": api_message,
+            "external_data_sent": True,
+        }
+
+    except (urllib.error.URLError, json.JSONDecodeError) as exc:
         report_path.write_text(
             "# AI Security Analysis\n\nAI request failed. Review E017 metadata.\n",
             encoding="utf-8",
@@ -102,8 +124,3 @@ Return a concise Markdown report with:
             "error_type": type(exc).__name__,
             "external_data_sent": True,
         }
-
-metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-
-for path in (report_path, metadata_path):
-    (evidence_dir / path.name).write_bytes(path.read_bytes())
