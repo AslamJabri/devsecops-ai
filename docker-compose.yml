@@ -17,6 +17,8 @@ services:
       PROJECT25_DAST_TARGET: http://host.docker.internal:${DEMO_APP_PORT:-5001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEV_MODEL: ${DEV_MODEL:-gpt-5}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash} 
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
