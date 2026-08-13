@@ -1,32 +1,149 @@
-#!/bin/sh
-# Project 25: evidence collection only. Findings do not block this baseline run.
-set +e
+#!/usr/bin/env bash
 
-results_dir="${1:-scan-results}"
-evidence_dir="${2:-/opt/project25/evidence/generated}"
+set -u
 
-mkdir -p "$results_dir" "$evidence_dir"
+TARGET_DIR="${1:-target}"
+OUTPUT_DIR="${2:-scan-results}"
+EVIDENCE_DIR="${3:-/opt/project25/evidence/generated}"
 
-gitleaks detect --source . --no-git --redact --report-format json \
-  --report-path "$results_dir/E004-gitleaks.json"
-gitleaks_status=$?
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$EVIDENCE_DIR"
 
-bandit --recursive demo-app --format json --output "$results_dir/E005-bandit.json"
-bandit_status=$?
+echo "[Project25] Target directory: $TARGET_DIR"
+echo "[Project25] Output directory: $OUTPUT_DIR"
 
-pip-audit --requirement demo-app/requirements.txt --format json \
-  --output "$results_dir/E006-pip-audit.json"
-audit_status=$?
+# --------------------------------------------------
+# E004 - Gitleaks
+# --------------------------------------------------
 
-# Some tools do not emit a result file when they fail before analysis.
-test -f "$results_dir/E004-gitleaks.json" || printf '[]\n' > "$results_dir/E004-gitleaks.json"
-test -f "$results_dir/E005-bandit.json" || printf '{"results": []}\n' > "$results_dir/E005-bandit.json"
-test -f "$results_dir/E006-pip-audit.json" || printf '[]\n' > "$results_dir/E006-pip-audit.json"
+echo "[Project25] Running Gitleaks..."
 
-printf '{"gitleaks_exit_code": %s, "bandit_exit_code": %s, "pip_audit_exit_code": %s}\n' \
-  "$gitleaks_status" "$bandit_status" "$audit_status" > "$results_dir/E007-scan-exit-codes.json"
+gitleaks detect \
+  --source "$TARGET_DIR" \
+  --no-git \
+  --report-format json \
+  --report-path "$OUTPUT_DIR/E004-gitleaks.json"
 
-cp "$results_dir"/* "$evidence_dir"/
+GITLEAKS_EXIT=$?
 
-# Intentionally return success: this is an evidence collection baseline, not a policy gate.
+# Gitleaks may not create a report when nothing is found.
+if [ ! -f "$OUTPUT_DIR/E004-gitleaks.json" ]; then
+  echo "[]" > "$OUTPUT_DIR/E004-gitleaks.json"
+fi
+
+
+# --------------------------------------------------
+# E005 - Bandit
+# --------------------------------------------------
+
+echo "[Project25] Running Bandit..."
+
+bandit \
+  -r "$TARGET_DIR" \
+  -f json \
+  -o "$OUTPUT_DIR/E005-bandit.json"
+
+BANDIT_EXIT=$?
+
+if [ ! -f "$OUTPUT_DIR/E005-bandit.json" ]; then
+  echo '{"results":[]}' > "$OUTPUT_DIR/E005-bandit.json"
+fi
+
+
+# --------------------------------------------------
+# E006 - pip-audit
+# --------------------------------------------------
+
+echo "[Project25] Running pip-audit..."
+
+PIP_AUDIT_EXIT=0
+
+REQUIREMENTS_FILE=""
+
+if [ -f "$TARGET_DIR/requirements.txt" ]; then
+  REQUIREMENTS_FILE="$TARGET_DIR/requirements.txt"
+else
+  REQUIREMENTS_FILE="$(
+    find "$TARGET_DIR" \
+      -maxdepth 3 \
+      -type f \
+      -name 'requirements*.txt' \
+      | head -n 1
+  )"
+fi
+
+if [ -n "$REQUIREMENTS_FILE" ]; then
+  echo "[Project25] Requirements file: $REQUIREMENTS_FILE"
+
+  pip-audit \
+    -r "$REQUIREMENTS_FILE" \
+    -f json \
+    -o "$OUTPUT_DIR/E006-pip-audit.json"
+
+  PIP_AUDIT_EXIT=$?
+else
+  echo "[Project25] No requirements file found."
+
+  cat > "$OUTPUT_DIR/E006-pip-audit.json" <<'EOF'
+{
+  "dependencies": [],
+  "project25_status": "skipped",
+  "reason": "No requirements file found"
+}
+EOF
+
+  PIP_AUDIT_EXIT=0
+fi
+
+
+# --------------------------------------------------
+# E007 - scanner exit codes
+# --------------------------------------------------
+
+python3 - \
+  "$OUTPUT_DIR/E007-scan-exit-codes.json" \
+  "$GITLEAKS_EXIT" \
+  "$BANDIT_EXIT" \
+  "$PIP_AUDIT_EXIT" <<'PY'
+import json
+import sys
+
+output = sys.argv[1]
+
+data = {
+    "gitleaks": int(sys.argv[2]),
+    "bandit": int(sys.argv[3]),
+    "pip_audit": int(sys.argv[4]),
+    "baseline_enforcement": False,
+}
+
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+
+
+# --------------------------------------------------
+# Copy evidence
+# --------------------------------------------------
+
+for report in \
+  "$OUTPUT_DIR/E004-gitleaks.json" \
+  "$OUTPUT_DIR/E005-bandit.json" \
+  "$OUTPUT_DIR/E006-pip-audit.json" \
+  "$OUTPUT_DIR/E007-scan-exit-codes.json"
+do
+  if [ -f "$report" ]; then
+    cp "$report" "$EVIDENCE_DIR/"
+  fi
+done
+
+
+# --------------------------------------------------
+# Baseline behavior
+# --------------------------------------------------
+
+echo "[Project25] Repository assessment complete."
+echo "[Project25] Baseline mode: scanner findings do not fail the pipeline."
+
 exit 0

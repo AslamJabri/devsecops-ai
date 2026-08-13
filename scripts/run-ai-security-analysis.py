@@ -772,7 +772,7 @@ def main() -> None:
 
     model = os.environ.get(
         "GEMINI_MODEL",
-        "gemini-3-flash-preview",
+        "gemini-3.6-flash",
     ).strip()
 
     # ---------------------------------------------------------
@@ -1036,8 +1036,21 @@ Analyze the evidence conservatively.
             )
 
         except json.JSONDecodeError as exc:
+            debug_path = analysis_dir / "E018-ai-invalid-response.txt"
+
+            debug_path.write_text(
+                output_text + "\n",
+                encoding="utf-8",
+            )
+
+            (evidence_dir / debug_path.name).write_bytes(
+                debug_path.read_bytes()
+            )
+
             raise ValueError(
-                "Gemini returned invalid JSON"
+                "Gemini returned invalid JSON. "
+                "Raw response saved to "
+                "E018-ai-invalid-response.txt"
             ) from exc
 
         # -----------------------------------------------------

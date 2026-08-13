@@ -1,34 +1,134 @@
-#!/bin/sh
-# Project 25: build and scan only the local demo image. No registry push occurs.
-set +e
+#!/usr/bin/env bash
 
-results_dir="${1:-container-results}"
-evidence_dir="${2:-/opt/project25/evidence/generated}"
-image_name="project25-demo-app:${BUILD_NUMBER:-local}"
+set -u
 
-mkdir -p "$results_dir" "$evidence_dir"
+TARGET_DIR="${1:-target}"
+OUTPUT_DIR="${2:-container-results}"
+EVIDENCE_DIR="${3:-/opt/project25/evidence/generated}"
 
-docker build --tag "$image_name" demo-app
-build_status=$?
+IMAGE_NAME="${PROJECT25_IMAGE_NAME:-project25-target:baseline}"
 
-if [ "$build_status" -eq 0 ]; then
-  docker image inspect "$image_name" > "$results_dir/E008-container-image-metadata.json"
-  inspect_status=$?
-  trivy image --scanners vuln --format json --output "$results_dir/E009-trivy-image.json" "$image_name"
-  trivy_status=$?
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$EVIDENCE_DIR"
+
+echo "[Project25] Container assessment"
+echo "[Project25] Target: $TARGET_DIR"
+echo "[Project25] Image: $IMAGE_NAME"
+
+BUILD_EXIT=0
+TRIVY_EXIT=0
+
+
+# --------------------------------------------------
+# Find Dockerfile
+# --------------------------------------------------
+
+DOCKERFILE=""
+
+if [ -f "$TARGET_DIR/Dockerfile" ]; then
+  DOCKERFILE="$TARGET_DIR/Dockerfile"
 else
-  printf '{"status": "image build failed; image inspection and Trivy scan were not run"}\n' \
-    > "$results_dir/E008-container-image-metadata.json"
-  printf '{"Results": []}\n' > "$results_dir/E009-trivy-image.json"
-  inspect_status=1
-  trivy_status=1
+  DOCKERFILE="$(
+    find "$TARGET_DIR" \
+      -maxdepth 3 \
+      -type f \
+      -iname 'Dockerfile*' \
+      | head -n 1
+  )"
 fi
 
-printf '{"image": "%s", "docker_build_exit_code": %s, "image_inspect_exit_code": %s, "trivy_exit_code": %s}\n' \
-  "$image_name" "$build_status" "$inspect_status" "$trivy_status" \
-  > "$results_dir/E010-container-scan-exit-codes.json"
 
-cp "$results_dir"/* "$evidence_dir"/
+# --------------------------------------------------
+# Build
+# --------------------------------------------------
 
-# Evidence collection baseline: later validation introduces a blocking policy.
+if [ -n "$DOCKERFILE" ]; then
+  BUILD_CONTEXT="$(dirname "$DOCKERFILE")"
+
+  echo "[Project25] Dockerfile: $DOCKERFILE"
+  echo "[Project25] Build context: $BUILD_CONTEXT"
+
+  docker build \
+    -t "$IMAGE_NAME" \
+    -f "$DOCKERFILE" \
+    "$BUILD_CONTEXT"
+
+  BUILD_EXIT=$?
+else
+  echo "[Project25] No Dockerfile found."
+
+  BUILD_EXIT=2
+fi
+
+
+# --------------------------------------------------
+# Trivy
+# --------------------------------------------------
+
+if [ "$BUILD_EXIT" -eq 0 ]; then
+  echo "[Project25] Running Trivy..."
+
+  trivy image \
+    --format json \
+    --output "$OUTPUT_DIR/E009-trivy-image.json" \
+    "$IMAGE_NAME"
+
+  TRIVY_EXIT=$?
+else
+  echo "[Project25] Image build failed/skipped; Trivy image scan skipped."
+
+  cat > "$OUTPUT_DIR/E009-trivy-image.json" <<'EOF'
+{
+  "Results": [],
+  "project25_status": "skipped",
+  "reason": "Container image was not successfully built"
+}
+EOF
+
+  TRIVY_EXIT=2
+fi
+
+
+# --------------------------------------------------
+# E010
+# --------------------------------------------------
+
+python3 - \
+  "$OUTPUT_DIR/E010-container-scan-exit-codes.json" \
+  "$BUILD_EXIT" \
+  "$TRIVY_EXIT" <<'PY'
+import json
+import sys
+
+output = sys.argv[1]
+
+data = {
+    "docker_build": int(sys.argv[2]),
+    "trivy": int(sys.argv[3]),
+    "baseline_enforcement": False,
+}
+
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+
+
+# --------------------------------------------------
+# Copy evidence
+# --------------------------------------------------
+
+for report in \
+  "$OUTPUT_DIR/E009-trivy-image.json" \
+  "$OUTPUT_DIR/E010-container-scan-exit-codes.json"
+do
+  if [ -f "$report" ]; then
+    cp "$report" "$EVIDENCE_DIR/"
+  fi
+done
+
+
+echo "[Project25] Container assessment complete."
+echo "[Project25] Baseline mode: build/scan findings do not fail the pipeline."
+
 exit 0
