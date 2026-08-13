@@ -7,19 +7,31 @@ evidence_dir="${2:-/opt/project25/evidence/generated}"
 workspace="${3:?Jenkins workspace path is required}"
 target_url="${PROJECT25_DAST_TARGET:-http://demo-app:5000}"
 docker_network="${PROJECT25_DOCKER_NETWORK:-project25-devsecops-lab_default}"
+jenkins_container="$(hostname)"
+jenkins_home_volume="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/jenkins_home"}}{{.Name}}{{end}}{{end}}' "$jenkins_container")"
 
 mkdir -p "$results_dir" "$evidence_dir"
 
-# The Docker daemon needs a Docker-visible volume; --volumes-from shares this
-# Jenkins container's persistent workspace with ZAP for report generation.
+if [ -z "$jenkins_home_volume" ]; then
+  printf '{"site": [], "alerts": [], "error": "Jenkins home volume was not found"}\n' > "$results_dir/E011-zap-baseline.json"
+  printf '<!doctype html><title>ZAP report unavailable</title>\n' > "$results_dir/E012-zap-baseline.html"
+  printf '{"tool": "OWASP ZAP baseline", "target": "%s", "scan_mode": "passive baseline only", "exit_code": 1}\n' \
+    "$target_url" > "$results_dir/E013-zap-baseline-exit-code.json"
+  cp "$results_dir"/* "$evidence_dir"/
+  exit 0
+fi
+
+# ZAP requires file reports beneath its /zap/wrk mount. The named Jenkins-home
+# volume contains this job's workspace and is mounted there temporarily.
+zap_report_dir="/zap/wrk/workspace/$(basename "$workspace")/$results_dir"
 docker run --rm \
   --network "$docker_network" \
-  --volumes-from "$(hostname)" \
+  --volume "$jenkins_home_volume:/zap/wrk" \
   --user root \
   ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py -t "$target_url" -m 1 -I \
-  -J "$workspace/$results_dir/E011-zap-baseline.json" \
-  -r "$workspace/$results_dir/E012-zap-baseline.html"
+  -J "$zap_report_dir/E011-zap-baseline.json" \
+  -r "$zap_report_dir/E012-zap-baseline.html"
 zap_status=$?
 
 test -f "$results_dir/E011-zap-baseline.json" || printf '{"site": [], "alerts": []}\n' > "$results_dir/E011-zap-baseline.json"

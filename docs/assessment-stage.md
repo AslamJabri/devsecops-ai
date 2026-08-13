@@ -32,4 +32,4 @@ The Jenkins container is given the local Docker Desktop socket only for this lab
 
 ## Passive DAST boundary
 
-The final assessment stage launches OWASP ZAP's baseline scan in a temporary container on the Compose network. Its only target is `http://demo-app:5000`, the local demo service. ZAP's baseline scan spiders the target and reports passive observations; it does not perform active attacks. The ZAP reports are evidence for human review, not automatic vulnerability claims.
+The final assessment stage launches OWASP ZAP's baseline scan in a temporary container on the Compose network. Its only target is `http://demo-app:5000`, the local demo service. ZAP's baseline scan spiders the target and reports passive observations; it does not perform active attacks. The temporary container mounts the Jenkins home volume only at ZAP's required report directory, then exits. The ZAP reports are evidence for human review, not automatic vulnerability claims.
