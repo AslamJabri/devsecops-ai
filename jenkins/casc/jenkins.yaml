@@ -44,6 +44,26 @@ jobs:
                     archiveArtifacts artifacts: 'generated/**', fingerprint: true
                   }
                 }
+                stage('Assess local repository') {
+                  steps {
+                    sh '''#!/bin/sh
+                      set +e
+                      mkdir -p scan-results
+                      gitleaks detect --source . --no-git --redact --report-format json --report-path scan-results/E004-gitleaks.json
+                      gitleaks_status=$?
+                      bandit --recursive demo-app --format json --output scan-results/E005-bandit.json
+                      bandit_status=$?
+                      pip-audit --requirement demo-app/requirements.txt --format json --output scan-results/E006-pip-audit.json
+                      audit_status=$?
+                      test -f scan-results/E004-gitleaks.json || printf '[]\\n' > scan-results/E004-gitleaks.json
+                      test -f scan-results/E005-bandit.json || printf '{"results": []}\\n' > scan-results/E005-bandit.json
+                      test -f scan-results/E006-pip-audit.json || printf '[]\\n' > scan-results/E006-pip-audit.json
+                      printf '{"gitleaks_exit_code": %s, "bandit_exit_code": %s, "pip_audit_exit_code": %s}\\n' "$gitleaks_status" "$bandit_status" "$audit_status" > scan-results/E007-scan-exit-codes.json
+                      cp scan-results/* /opt/project25/evidence/generated/
+                    '''
+                    archiveArtifacts artifacts: 'scan-results/**', fingerprint: true
+                  }
+                }
               }
             }''')
           }

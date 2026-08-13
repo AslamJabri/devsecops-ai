@@ -7,8 +7,8 @@ This repository starts with the **Build** phase of the Project 25 assessment. It
 | Plan | Scope and boundary in README | Confirm assessment objectives and rules of engagement |
 | Build | Docker Compose, Jenkins, demo app | Boot and capture environment evidence |
 | Baseline | Simulated findings and baseline Jenkinsfile | Run `project25-baseline-evidence` |
-| Assess / Simulate | Not yet enabled | Add safe, local scanning only |
-| Evidence | E001–E003 register | Preserve console output and artifacts |
+| Assess / Simulate | Local Gitleaks, Bandit, and pip-audit scans | Review E004–E007 with human context |
+| Evidence | E001–E007 register | Preserve console output and artifacts |
 | Analyze | Not yet enabled | Add AI summary over collected evidence, with human review |
 | ATT&CK / D3FEND | Not yet mapped | Map only demonstrated observations and mitigations |
 | Mitigate / Validate | Not yet enabled | Add controls, rerun the same checks, compare evidence |
