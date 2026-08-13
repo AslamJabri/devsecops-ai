@@ -11,14 +11,14 @@ The Jenkins job now assesses only the checked-out Project 25 repository with thr
 | E008 | Docker | Built local image metadata | Record image identity for repeatability |
 | E009 | Trivy | Known vulnerabilities in the built image | Record results; do not block the baseline build |
 | E010 | Shell wrapper | Docker build/inspect and Trivy exit codes | Supports repeatable before/after comparison |
-| E011 | OWASP ZAP baseline | Passive DAST report for the local demo app | Record results; do not block the baseline build |
-| E012 | OWASP ZAP baseline | Human-readable passive DAST report | Review during evidence analysis |
-| E013 | Shell wrapper | ZAP target, mode, and exit code | Confirms local-only scan boundary |
+
 
 All scans are local to the Jenkins workspace. Gitleaks redacts any matched value in its report. The pipeline records tool output first; mitigation policy gates are deliberately deferred to the Validate phase. An exit code of `1` in E007 can mean a scanner found a review item; read the matching E004–E006 report before making a conclusion.
 
 Before cloning, the pipeline clears only its own Jenkins workspace. This prevents a stale or incomplete `.git` directory from affecting repeatability; it does not alter the GitHub repository or the persistent evidence folder.
+## Deferred DAST
 
+DAST is intentionally deferred. It will be run later against an authorized, reachable staging deployment after the pre-deployment controls have been reviewed. It is not part of the current baseline evidence set.
 ## Live-demo flow
 
 1. Build the updated Jenkins image.

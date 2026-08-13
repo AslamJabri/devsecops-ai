@@ -56,10 +56,10 @@ jobs:
                     archiveArtifacts artifacts: 'container-results/**', fingerprint: true
                   }
                 }
-                stage('Passive DAST baseline') {
+                stage('Analyze evidence and prepare MITRE review') {
                   steps {
-                    sh 'sh scripts/run-zap-baseline.sh dast-results /opt/project25/evidence/generated "$WORKSPACE"'
-                    archiveArtifacts artifacts: 'dast-results/**', fingerprint: true
+                    sh 'python3 scripts/analyze-evidence.py scan-results container-results analysis-results /opt/project25/evidence/generated'
+                    archiveArtifacts artifacts: 'analysis-results/**', fingerprint: true
                   }
                 }
               }

@@ -14,8 +14,7 @@ Jenkins writes generated evidence bundles to `evidence/generated/`. Keep the sou
 | E008 | Container pipeline stage | Local image build metadata; no registry push |
 | E009 | Container pipeline stage | Trivy vulnerability scan of the built image |
 | E010 | Container pipeline stage | Container build, inspect, and Trivy exit codes |
-| E011 | DAST pipeline stage | OWASP ZAP passive baseline JSON report for the local demo app |
-| E012 | DAST pipeline stage | OWASP ZAP passive baseline HTML report for the local demo app |
-| E013 | DAST pipeline stage | ZAP target, scan boundary, and exit code |
+| E014 | Analysis pipeline stage | Local evidence summary from E004–E010; human review required |
+| E015 | Analysis pipeline stage | MITRE ATT&CK/D3FEND candidate review worksheet |
 
 Only safe, fictional test data belongs in this repository.
