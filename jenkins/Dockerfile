@@ -4,7 +4,7 @@ USER root
 ARG GITLEAKS_VERSION=8.18.1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates git python3-pip \
+    && apt-get install -y --no-install-recommends curl ca-certificates git python3-pip python3-venv \
     && pip3 install --no-cache-dir --break-system-packages bandit==1.7.9 pip-audit==2.7.3 \
     && rm -rf /var/lib/apt/lists/*
 RUN curl --fail --location --silent --show-error \

@@ -9,7 +9,7 @@ The Jenkins job now assesses only the checked-out Project 25 repository with thr
 | E006 | pip-audit | Known issues in declared Python dependencies | Record results; do not block the baseline build |
 | E007 | Shell wrapper | Each scanner's exit code | Supports repeatable before/after comparison |
 
-All scans are local to the Jenkins workspace. Gitleaks redacts any matched value in its report. The pipeline records tool output first; mitigation policy gates are deliberately deferred to the Validate phase.
+All scans are local to the Jenkins workspace. Gitleaks redacts any matched value in its report. The pipeline records tool output first; mitigation policy gates are deliberately deferred to the Validate phase. An exit code of `1` in E007 can mean a scanner found a review item; read the matching E004–E006 report before making a conclusion.
 
 ## Live-demo flow
 
