@@ -1,0 +1,51 @@
+jenkins:
+  systemMessage: "Project 25 — local DevSecOps assessment lab (safe dummy data only)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID:-admin}"
+          password: "${JENKINS_ADMIN_PASSWORD:-project25-local-demo-only}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  markupFormatter: plainText
+  remotingSecurity:
+    enabled: true
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+    adminAddress: "Project 25 Lab Admin <admin@local.invalid>"
+
+jobs:
+  - script: >
+      pipelineJob('project25-baseline-evidence') {
+        displayName('Project 25 - Baseline Evidence')
+        description('Creates an evidence bundle from safe, simulated baseline data. No exploitation is performed.')
+        definition {
+          cps {
+            sandbox()
+            script('''pipeline {
+              agent any
+              options { timestamps() }
+              stages {
+                stage('Confirm lab scope') {
+                  steps {
+                    git branch: env.PROJECT25_GIT_BRANCH, url: env.PROJECT25_GIT_URL
+                    sh "test -f demo-app/Jenkinsfile && test -f baseline/simulated-findings.json"
+                    echo "Local lab only; test data only; no external targets."
+                  }
+                }
+                stage('Collect baseline evidence') {
+                  steps {
+                    sh "mkdir -p generated /opt/project25/evidence/generated && cp baseline/simulated-findings.json generated/E001-baseline-findings.json && cp demo-app/Jenkinsfile generated/E002-pipeline-baseline.txt && sha256sum generated/* > generated/E003-checksums.sha256 && cp generated/* /opt/project25/evidence/generated/"
+                    archiveArtifacts artifacts: 'generated/**', fingerprint: true
+                  }
+                }
+              }
+            }''')
+          }
+        }
+      }

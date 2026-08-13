@@ -1,0 +1,22 @@
+{
+  "evidence_id": "E001",
+  "classification": "SIMULATED_BASELINE",
+  "scope": "Project 25 local Docker Compose lab only",
+  "notice": "This file contains fictional assessment observations and no real credentials, targets, or exploit instructions.",
+  "findings": [
+    {
+      "id": "F001",
+      "title": "Credential handling policy requires validation",
+      "severity": "medium",
+      "observation": "A simulated pipeline configuration represents a value passed as plain configuration rather than a credential-store reference.",
+      "validation_goal": "Demonstrate use of Jenkins Credentials Binding in the mitigation phase."
+    },
+    {
+      "id": "F002",
+      "title": "Security checks are absent from the simulated baseline pipeline",
+      "severity": "medium",
+      "observation": "The baseline Jenkinsfile has no secret, dependency, or static-analysis gates.",
+      "validation_goal": "Add non-invasive local checks and compare the resulting evidence bundle."
+    }
+  ]
+}

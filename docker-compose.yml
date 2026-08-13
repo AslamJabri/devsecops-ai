@@ -1,0 +1,46 @@
+name: project25-devsecops-lab
+
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+    ports:
+      - "${JENKINS_HTTP_PORT:-8080}:8080"
+    environment:
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs/jenkins.yaml
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-project25-local-demo-only}
+      PROJECT25_GIT_URL: ${PROJECT25_GIT_URL:-https://github.com/AslamJabri/devsecops-ai.git}
+      PROJECT25_GIT_BRANCH: ${PROJECT25_GIT_BRANCH:-main}
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
+      - ./demo-app:/opt/project25/demo-app:ro
+      - ./baseline:/opt/project25/baseline:ro
+      - ./evidence:/opt/project25/evidence
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/login >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+
+  demo-app:
+    build:
+      context: ./demo-app
+    ports:
+      - "${DEMO_APP_PORT:-5001}:5000"
+    environment:
+      APP_ENV: local-lab
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jenkins_home:

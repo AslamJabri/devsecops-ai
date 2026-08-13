@@ -1,0 +1,10 @@
+pipeline {
+  agent any
+  stages {
+    stage('Baseline placeholder') {
+      steps {
+        echo 'Baseline pipeline definition retained for Project 25 assessment.'
+      }
+    }
+  }
+}
