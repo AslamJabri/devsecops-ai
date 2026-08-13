@@ -13,8 +13,9 @@ services:
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-project25-local-demo-only}
       PROJECT25_GIT_URL: ${PROJECT25_GIT_URL:-https://github.com/AslamJabri/devsecops-ai.git}
       PROJECT25_GIT_BRANCH: ${PROJECT25_GIT_BRANCH:-main}
+      TARGET_GIT_URL: ${TARGET_GIT_URL:-https://github.com/manuelz120/extremely-vulnerable-flask-app.git}
+      TARGET_GIT_BRANCH: ${TARGET_GIT_BRANCH:-master}
       JAVA_OPTS: -Djenkins.install.runSetupWizard=false
-      PROJECT25_DAST_TARGET: http://host.docker.internal:${DEMO_APP_PORT:-5001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DEV_MODEL: ${DEV_MODEL:-gpt-5}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
