@@ -5,7 +5,7 @@ set +e
 results_dir="${1:-dast-results}"
 evidence_dir="${2:-/opt/project25/evidence/generated}"
 workspace="${3:?Jenkins workspace path is required}"
-target_url="${PROJECT25_DAST_TARGET:-http://demo-app:5000}"
+target_url="${PROJECT25_DAST_TARGET:-http://host.docker.internal:5001}"
 docker_network="${PROJECT25_DOCKER_NETWORK:-project25-devsecops-lab_default}"
 jenkins_container="$(hostname)"
 jenkins_home_volume="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/jenkins_home"}}{{.Name}}{{end}}{{end}}' "$jenkins_container")"
@@ -25,7 +25,6 @@ fi
 # volume contains this job's workspace and is mounted there temporarily.
 zap_report_dir="/zap/wrk/workspace/$(basename "$workspace")/$results_dir"
 docker run --rm \
-  --network "$docker_network" \
   --volume "$jenkins_home_volume:/zap/wrk" \
   --user root \
   ghcr.io/zaproxy/zaproxy:stable \

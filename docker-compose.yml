@@ -15,6 +15,7 @@ services:
       PROJECT25_GIT_BRANCH: ${PROJECT25_GIT_BRANCH:-main}
       PROJECT25_DOCKER_NETWORK: project25-devsecops-lab_default
       JAVA_OPTS: -Djenkins.install.runSetupWizard=false
+      PROJECT25_DAST_TARGET: http://host.docker.internal:${DEMO_APP_PORT:-5001}
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
