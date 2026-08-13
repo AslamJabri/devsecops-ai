@@ -48,6 +48,12 @@ jobs:
                     archiveArtifacts artifacts: 'scan-results/**', fingerprint: true
                   }
                 }
+                stage('Build and scan container image') {
+                  steps {
+                    sh 'sh scripts/build-and-scan-image.sh container-results /opt/project25/evidence/generated'
+                    archiveArtifacts artifacts: 'container-results/**', fingerprint: true
+                  }
+                }
               }
             }''')
           }

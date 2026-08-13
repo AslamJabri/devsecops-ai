@@ -12,7 +12,7 @@ The job copies only fictional observations into a fingerprinted evidence bundle.
 
 The public repository URL and branch are configured in `.env` as `PROJECT25_GIT_URL` and `PROJECT25_GIT_BRANCH`. For a private repository, add a Jenkins credential and update the checkout configuration rather than placing a token in `.env`.
 
-The next pipeline stage runs Gitleaks, Bandit, and pip-audit against the cloned local workspace and archives E004–E007. See [the assessment notes](docs/assessment-stage.md).
+The assessment stages run Gitleaks, Bandit, and pip-audit against the cloned local workspace, then build the local demo image and scan it with Trivy. They archive E004–E010. See [the assessment notes](docs/assessment-stage.md).
 
 ## Run it on macOS
 
