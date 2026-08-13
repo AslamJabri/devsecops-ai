@@ -16,5 +16,7 @@ Jenkins writes generated evidence bundles to `evidence/generated/`. Keep the sou
 | E010 | Container pipeline stage | Container build, inspect, and Trivy exit codes |
 | E014 | Analysis pipeline stage | Local evidence summary from E004–E010; human review required |
 | E015 | Analysis pipeline stage | MITRE ATT&CK/D3FEND candidate review worksheet |
+| E016 | AI analysis stage | AI-generated security narrative based only on E014; human review required |
+| E017 | AI analysis stage | Model, execution status, and data-boundary metadata |
 
 Only safe, fictional test data belongs in this repository.
