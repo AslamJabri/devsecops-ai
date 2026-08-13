@@ -65,7 +65,7 @@ jobs:
                 stage('AI security analysis') {
                   steps {
                      sh 'python3 scripts/run-ai-security-analysis.py analysis-results /opt/project25/evidence/generated'
-                     archiveArtifacts artifacts: 'analysis-results/E016-ai-security-analysis.md, analysis-results/E017-ai-analysis-metadata.json', fingerprint: true
+                     archiveArtifacts artifacts: 'analysis-results/E016-ai-security-analysis.md, analysis-results/E017-ai-analysis-metadata.json , analysis-results/E018-ai-security-analysis.json', fingerprint: true, allowEmptyArchive: true
                   }
                 }
               }
