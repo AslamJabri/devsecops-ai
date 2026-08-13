@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Project 25 opt-in AI analysis. Sends E014 only, never raw scan output."""
+"""Project 25 opt-in Gemini AI analysis. Sends E014 only, never raw scan output."""
 
 import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,19 +37,20 @@ def main():
     metadata_path = analysis_dir / "E017-ai-analysis-metadata.json"
     summary_path = analysis_dir / "E014-local-analysis-summary.json"
 
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    model = os.environ.get("PROJECT25_AI_MODEL", "gpt-5").strip()
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
     if not api_key:
         write_artifacts(
             report_path,
             metadata_path,
             evidence_dir,
-            "# AI Security Analysis\n\nSkipped: no API key configured.\n",
+            "# AI Security Analysis\n\nSkipped: GEMINI_API_KEY is not configured.\n",
             {
                 "evidence_id": "E017",
                 "status": "skipped",
-                "reason": "OPENAI_API_KEY is not configured",
+                "provider": "Gemini",
+                "reason": "GEMINI_API_KEY is not configured",
                 "external_data_sent": False,
             },
         )
@@ -65,6 +67,7 @@ def main():
             {
                 "evidence_id": "E017",
                 "status": "error",
+                "provider": "Gemini",
                 "error_type": type(exc).__name__,
                 "external_data_sent": False,
             },
@@ -78,29 +81,47 @@ Use only the supplied E014 summary. Do not invent facts, CVEs, scanner results,
 ATT&CK techniques, or D3FEND controls. Clearly label inferences as candidate
 recommendations. A vulnerability finding alone does not prove attacker activity.
 
-Return a concise Markdown report with:
+Return concise Markdown with:
 1. Executive summary
 2. Evidence-based findings, each referencing E00X evidence IDs
 3. Prioritized remediation or validation actions
-4. Candidate MITRE ATT&CK and D3FEND mappings, explicitly marked
+4. Candidate MITRE ATT&CK and D3FEND mappings, marked
    'human verification required'
 5. A statement that DAST is deferred to authorized staging.
 """
 
     payload = {
-        "model": model,
-        "store": False,
-        "instructions": instructions,
-        "input": json.dumps(evidence, indent=2),
+        "systemInstruction": {
+            "parts": [{"text": instructions}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": "Analyze this E014 evidence summary:\n\n"
+                        + json.dumps(evidence, indent=2)
+                    }
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 1200,
+        },
     }
 
+    endpoint = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        + urllib.parse.quote(model, safe="")
+        + ":generateContent?key="
+        + urllib.parse.quote(api_key, safe="")
+    )
+
     request = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
+        endpoint,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers={"Content-Type": "application/json"},
         method="POST",
     )
 
@@ -108,9 +129,17 @@ Return a concise Markdown report with:
         with urllib.request.urlopen(request, timeout=90) as response:
             result = json.loads(response.read().decode("utf-8"))
 
-        output_text = result.get("output_text", "").strip()
+        parts = (
+            result.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
+        output_text = "".join(
+            part.get("text", "") for part in parts
+        ).strip()
+
         if not output_text:
-            output_text = "No text output was returned by the AI service."
+            output_text = "No text output was returned by Gemini."
 
         write_artifacts(
             report_path,
@@ -122,6 +151,7 @@ Return a concise Markdown report with:
             {
                 "evidence_id": "E017",
                 "status": "completed",
+                "provider": "Gemini",
                 "model": model,
                 "input": "E014 local analysis summary only",
                 "raw_source_or_credentials_sent": False,
@@ -144,10 +174,11 @@ Return a concise Markdown report with:
             report_path,
             metadata_path,
             evidence_dir,
-            "# AI Security Analysis\n\nAI request failed. Review E017 metadata.\n",
+            "# AI Security Analysis\n\nGemini request failed. Review E017 metadata.\n",
             {
                 "evidence_id": "E017",
                 "status": "error",
+                "provider": "Gemini",
                 "http_status": exc.code,
                 "api_error": api_message,
                 "external_data_sent": True,
@@ -159,10 +190,11 @@ Return a concise Markdown report with:
             report_path,
             metadata_path,
             evidence_dir,
-            "# AI Security Analysis\n\nAI request failed. Review E017 metadata.\n",
+            "# AI Security Analysis\n\nGemini request failed. Review E017 metadata.\n",
             {
                 "evidence_id": "E017",
                 "status": "error",
+                "provider": "Gemini",
                 "error_type": type(exc).__name__,
                 "external_data_sent": True,
             },
