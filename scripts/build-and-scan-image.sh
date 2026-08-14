@@ -4,16 +4,16 @@ set -u
 
 TARGET_DIR="${1:-target}"
 OUTPUT_DIR="${2:-container-results}"
-EVIDENCE_DIR="${3:-/opt/sentinelforge/evidence/generated}"
+EVIDENCE_DIR="${3:-/opt/devshield/evidence/generated}"
 
-IMAGE_NAME="${SENTINELFORGE_IMAGE_NAME:-sentinelforge-demo-app:baseline}"
+IMAGE_NAME="${DEVSHIELD_IMAGE_NAME:-devshield-demo-app:baseline}"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$EVIDENCE_DIR"
 
-echo "[SentinelForge] Container assessment"
-echo "[SentinelForge] Target: $TARGET_DIR"
-echo "[SentinelForge] Image: $IMAGE_NAME"
+echo "[DevShield] Container assessment"
+echo "[DevShield] Target: $TARGET_DIR"
+echo "[DevShield] Image: $IMAGE_NAME"
 
 BUILD_EXIT=0
 TRIVY_EXIT=0
@@ -45,8 +45,8 @@ fi
 if [ -n "$DOCKERFILE" ]; then
   BUILD_CONTEXT="$(dirname "$DOCKERFILE")"
 
-  echo "[SentinelForge] Dockerfile: $DOCKERFILE"
-  echo "[SentinelForge] Build context: $BUILD_CONTEXT"
+  echo "[DevShield] Dockerfile: $DOCKERFILE"
+  echo "[DevShield] Build context: $BUILD_CONTEXT"
 
   docker build \
     -t "$IMAGE_NAME" \
@@ -55,7 +55,7 @@ if [ -n "$DOCKERFILE" ]; then
 
   BUILD_EXIT=$?
 else
-  echo "[SentinelForge] No Dockerfile found."
+  echo "[DevShield] No Dockerfile found."
 
   BUILD_EXIT=2
 fi
@@ -66,7 +66,7 @@ fi
 # --------------------------------------------------
 
 if [ "$BUILD_EXIT" -eq 0 ]; then
-  echo "[SentinelForge] Running Trivy..."
+  echo "[DevShield] Running Trivy..."
 
   trivy image \
     --format json \
@@ -75,12 +75,12 @@ if [ "$BUILD_EXIT" -eq 0 ]; then
 
   TRIVY_EXIT=$?
 else
-  echo "[SentinelForge] Image build failed/skipped; Trivy image scan skipped."
+  echo "[DevShield] Image build failed/skipped; Trivy image scan skipped."
 
   cat > "$OUTPUT_DIR/E009-trivy-image.json" <<'EOF'
 {
   "Results": [],
-  "sentinelforge_status": "skipped",
+  "devshield_status": "skipped",
   "reason": "Container image was not successfully built"
 }
 EOF
@@ -128,7 +128,7 @@ do
 done
 
 
-echo "[SentinelForge] Container assessment complete."
-echo "[SentinelForge] Baseline mode: build/scan findings do not fail the pipeline."
+echo "[DevShield] Container assessment complete."
+echo "[DevShield] Baseline mode: build/scan findings do not fail the pipeline."
 
 exit 0

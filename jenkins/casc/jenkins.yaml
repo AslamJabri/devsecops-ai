@@ -1,12 +1,12 @@
 jenkins:
-  systemMessage: "SentinelForge AI - local DevSecOps assessment lab (safe dummy data only)"
+  systemMessage: "DevShield AI - local DevSecOps assessment lab (safe dummy data only)"
   numExecutors: 2
   securityRealm:
     local:
       allowsSignup: false
       users:
         - id: "${JENKINS_ADMIN_ID:-admin}"
-          password: "${JENKINS_ADMIN_PASSWORD:-sentinelforge-local-demo-only}"
+          password: "${JENKINS_ADMIN_PASSWORD:-devshield-local-demo-only}"
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
@@ -15,12 +15,12 @@ jenkins:
 unclassified:
   location:
     url: "http://localhost:8080/"
-    adminAddress: "SentinelForge AI Lab Admin <admin@local.invalid>"
+    adminAddress: "DevShield AI Lab Admin <admin@local.invalid>"
 
 jobs:
   - script: |
-      pipelineJob('sentinelforge-ai-assessment') {
-        displayName('SentinelForge AI - Evidence Assessment')
+      pipelineJob('devshield-ai-assessment') {
+        displayName('DevShield AI - Evidence Assessment')
         description('Assesses only the included safe demo app and produces evidence-led, advisory AI analysis. No exploitation or external target assessment is performed.')
         definition {
           cps {
@@ -32,9 +32,9 @@ jobs:
                 stage('Confirm lab scope and checkout') {
                   steps {
                     deleteDir()
-                    echo 'SentinelForge AI - safe local assessment only; no external targets.'
+                    echo 'DevShield AI - safe local assessment only; no external targets.'
                     dir('source') {
-                      git branch: env.SENTINELFORGE_GIT_BRANCH, url: env.SENTINELFORGE_GIT_URL
+                      git branch: env.DEVSHIELD_GIT_BRANCH, url: env.DEVSHIELD_GIT_URL
                     }
                     sh """
                       set -eu
@@ -50,16 +50,16 @@ jobs:
                   steps {
                     sh """
                       set -eu
-                      mkdir -p generated /opt/sentinelforge/evidence/generated
+                      mkdir -p generated /opt/devshield/evidence/generated
                       printf '%s\\n' \\
-                        'SentinelForge AI local baseline assessment' \\
-                        "Repository: \\$SENTINELFORGE_GIT_URL" \\
-                        "Branch: \\$SENTINELFORGE_GIT_BRANCH" \\
+                        'DevShield AI local baseline assessment' \\
+                        "Repository: \\$DEVSHIELD_GIT_URL" \\
+                        "Branch: \\$DEVSHIELD_GIT_BRANCH" \\
                         'Scope: included safe demo-app only' > generated/E001-baseline-scope.txt
                       git -C source rev-parse HEAD > generated/E002-source-commit.txt
                       find source/demo-app -maxdepth 3 -type f | sort > generated/E003-demo-app-file-inventory.txt
                       sha256sum generated/E001-baseline-scope.txt generated/E002-source-commit.txt generated/E003-demo-app-file-inventory.txt > generated/E003-checksums.sha256
-                      cp generated/* /opt/sentinelforge/evidence/generated/
+                      cp generated/* /opt/devshield/evidence/generated/
                     """
                     archiveArtifacts artifacts: 'generated/**', fingerprint: true
                   }
@@ -70,7 +70,7 @@ jobs:
                       set -eu
                       rm -rf scan-results
                       mkdir -p scan-results
-                      sh source/scripts/run-local-assessment.sh source/demo-app scan-results /opt/sentinelforge/evidence/generated
+                      sh source/scripts/run-local-assessment.sh source/demo-app scan-results /opt/devshield/evidence/generated
                     """
                     archiveArtifacts artifacts: 'scan-results/**', fingerprint: true, allowEmptyArchive: true
                   }
@@ -81,20 +81,20 @@ jobs:
                       set -eu
                       rm -rf container-results
                       mkdir -p container-results
-                      sh source/scripts/build-and-scan-image.sh source/demo-app container-results /opt/sentinelforge/evidence/generated
+                      sh source/scripts/build-and-scan-image.sh source/demo-app container-results /opt/devshield/evidence/generated
                     """
                     archiveArtifacts artifacts: 'container-results/**', fingerprint: true, allowEmptyArchive: true
                   }
                 }
                 stage('Analyze evidence and prepare MITRE review') {
                   steps {
-                    sh 'rm -rf analysis-results && mkdir -p analysis-results && python3 source/scripts/analyze-evidence.py scan-results container-results analysis-results /opt/sentinelforge/evidence/generated'
+                    sh 'rm -rf analysis-results && mkdir -p analysis-results && python3 source/scripts/analyze-evidence.py scan-results container-results analysis-results /opt/devshield/evidence/generated'
                     archiveArtifacts artifacts: 'analysis-results/E014-local-analysis-summary.json, analysis-results/E015-mitre-d3fend-review-worksheet.json', fingerprint: true, allowEmptyArchive: true
                   }
                 }
                 stage('AI security analysis') {
                   steps {
-                    sh 'python3 source/scripts/run-ai-security-analysis.py analysis-results /opt/sentinelforge/evidence/generated'
+                    sh 'python3 source/scripts/run-ai-security-analysis.py analysis-results /opt/devshield/evidence/generated'
                     archiveArtifacts artifacts: 'analysis-results/E016-ai-security-analysis.md, analysis-results/E017-ai-analysis-metadata.json, analysis-results/E018-ai-security-analysis.json', fingerprint: true, allowEmptyArchive: true
                   }
                 }
@@ -102,8 +102,8 @@ jobs:
                   steps {
                     sh """
                       set -eu
-                      find /opt/sentinelforge/evidence/generated -maxdepth 1 -type f ! -name 'E019-final-evidence-checksums.sha256' -print0 | sort -z | xargs -0 sha256sum > generated/E019-final-evidence-checksums.sha256
-                      cp generated/E019-final-evidence-checksums.sha256 /opt/sentinelforge/evidence/generated/
+                      find /opt/devshield/evidence/generated -maxdepth 1 -type f ! -name 'E019-final-evidence-checksums.sha256' -print0 | sort -z | xargs -0 sha256sum > generated/E019-final-evidence-checksums.sha256
+                      cp generated/E019-final-evidence-checksums.sha256 /opt/devshield/evidence/generated/
                     """
                     archiveArtifacts artifacts: 'generated/E019-final-evidence-checksums.sha256', fingerprint: true
                   }
@@ -111,8 +111,8 @@ jobs:
               }
               post {
                 always { archiveArtifacts artifacts: 'generated/**, scan-results/**, container-results/**, analysis-results/**', fingerprint: true, allowEmptyArchive: true }
-                success { echo 'SentinelForge AI assessment completed. AI and mappings require human review.' }
-                failure { echo 'SentinelForge AI assessment failed. Review console output and evidence artifacts.' }
+                success { echo 'DevShield AI assessment completed. AI and mappings require human review.' }
+                failure { echo 'DevShield AI assessment failed. Review console output and evidence artifacts.' }
               }
             }''')
           }

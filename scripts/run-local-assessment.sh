@@ -4,19 +4,19 @@ set -u
 
 TARGET_DIR="${1:-target}"
 OUTPUT_DIR="${2:-scan-results}"
-EVIDENCE_DIR="${3:-/opt/sentinelforge/evidence/generated}"
+EVIDENCE_DIR="${3:-/opt/devshield/evidence/generated}"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$EVIDENCE_DIR"
 
-echo "[SentinelForge] Target directory: $TARGET_DIR"
-echo "[SentinelForge] Output directory: $OUTPUT_DIR"
+echo "[DevShield] Target directory: $TARGET_DIR"
+echo "[DevShield] Output directory: $OUTPUT_DIR"
 
 # --------------------------------------------------
 # E004 - Gitleaks
 # --------------------------------------------------
 
-echo "[SentinelForge] Running Gitleaks..."
+echo "[DevShield] Running Gitleaks..."
 
 gitleaks detect \
   --source "$TARGET_DIR" \
@@ -36,7 +36,7 @@ fi
 # E005 - Bandit
 # --------------------------------------------------
 
-echo "[SentinelForge] Running Bandit..."
+echo "[DevShield] Running Bandit..."
 
 bandit \
   -r "$TARGET_DIR" \
@@ -54,7 +54,7 @@ fi
 # E006 - pip-audit
 # --------------------------------------------------
 
-echo "[SentinelForge] Running pip-audit..."
+echo "[DevShield] Running pip-audit..."
 
 PIP_AUDIT_EXIT=0
 
@@ -73,7 +73,7 @@ else
 fi
 
 if [ -n "$REQUIREMENTS_FILE" ]; then
-  echo "[SentinelForge] Requirements file: $REQUIREMENTS_FILE"
+  echo "[DevShield] Requirements file: $REQUIREMENTS_FILE"
 
   pip-audit \
     -r "$REQUIREMENTS_FILE" \
@@ -82,12 +82,12 @@ if [ -n "$REQUIREMENTS_FILE" ]; then
 
   PIP_AUDIT_EXIT=$?
 else
-  echo "[SentinelForge] No requirements file found."
+  echo "[DevShield] No requirements file found."
 
   cat > "$OUTPUT_DIR/E006-pip-audit.json" <<'EOF'
 {
   "dependencies": [],
-  "sentinelforge_status": "skipped",
+  "devshield_status": "skipped",
   "reason": "No requirements file found"
 }
 EOF
@@ -143,7 +143,7 @@ done
 # Baseline behavior
 # --------------------------------------------------
 
-echo "[SentinelForge] Repository assessment complete."
-echo "[SentinelForge] Baseline mode: scanner findings do not fail the pipeline."
+echo "[DevShield] Repository assessment complete."
+echo "[DevShield] Baseline mode: scanner findings do not fail the pipeline."
 
 exit 0

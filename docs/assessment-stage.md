@@ -28,7 +28,7 @@ DAST is intentionally deferred. It will be run later against an authorized, reac
 
 ## Container scan boundary
 
-The Jenkins container is given the local Docker Desktop socket only for this lab's build-and-scan stage. It builds `sentinelforge-demo-app:<build number>` from `demo-app/`, scans it locally with Trivy, and does not push it to any registry. This is privileged local-lab access; do not use this Compose configuration for a shared or production Jenkins server. The Docker image pins Trivy to a published release so the demo remains reproducible.
+The Jenkins container is given the local Docker Desktop socket only for this lab's build-and-scan stage. It builds `devshield-demo-app:<build number>` from `demo-app/`, scans it locally with Trivy, and does not push it to any registry. This is privileged local-lab access; do not use this Compose configuration for a shared or production Jenkins server. The Docker image pins Trivy to a published release so the demo remains reproducible.
 
 ## Passive DAST boundary
 

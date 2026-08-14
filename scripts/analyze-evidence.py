@@ -133,7 +133,7 @@ def deterministic_risk_score(
     return {
         "score": score,
         "rating": rating,
-        "method": "sentinelforge-deterministic-baseline-v1",
+        "method": "devshield-deterministic-baseline-v1",
         "notes": [
             "This score is a local lab prioritization aid.",
             "It is not a replacement for CVSS or organizational risk acceptance.",
@@ -166,7 +166,7 @@ def main() -> None:
     evidence_dir = Path(
         sys.argv[4]
         if len(sys.argv) > 4
-        else "/opt/sentinelforge/evidence/generated"
+        else "/opt/devshield/evidence/generated"
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -494,13 +494,13 @@ def main() -> None:
     )
 
     print(
-        f"[SentinelForge] Generated {e014_path}"
+        f"[DevShield] Generated {e014_path}"
     )
     print(
-        f"[SentinelForge] Generated {e015_path}"
+        f"[DevShield] Generated {e015_path}"
     )
     print(
-        "[SentinelForge] Deterministic risk score: "
+        "[DevShield] Deterministic risk score: "
         f"{risk_score['score']}/100 "
         f"({risk_score['rating']})"
     )

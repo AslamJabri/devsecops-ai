@@ -6,7 +6,7 @@ This repository starts with the **Build** phase of the Project 25 assessment. It
 | --- | --- | --- |
 | Plan | Scope and boundary in README | Confirm assessment objectives and rules of engagement |
 | Build | Docker Compose, Jenkins, demo app | Boot and capture environment evidence |
-| Baseline | Simulated findings and baseline Jenkinsfile | Run `sentinelforge-ai-assessment` |
+| Baseline | Simulated findings and baseline Jenkinsfile | Run `devshield-ai-assessment` |
 | Assess / Simulate | Local Gitleaks, Bandit, pip-audit, Docker build, Trivy, and passive ZAP scans | Review E004–E013 with human context |
 | Evidence | E001–E013 register | Preserve console output and artifacts |
 | Analyze | Not yet enabled | Add AI summary over collected evidence, with human review |

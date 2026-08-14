@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SentinelForge AI evidence-grounded Gemini security analysis.
+DevShield AI evidence-grounded Gemini security analysis.
 
 Security design:
 - Sends E014 only.
@@ -478,7 +478,7 @@ def render_markdown(
 ) -> str:
     lines: list[str] = []
 
-    lines.append("# SentinelForge AI Security Analysis - Human Review Required")
+    lines.append("# DevShield AI Security Analysis - Human Review Required")
     lines.append("")
 
     lines.append("## Deterministic Risk Context")
@@ -647,7 +647,7 @@ def main() -> None:
     evidence_dir = Path(
         sys.argv[2]
         if len(sys.argv) > 2
-        else "/opt/sentinelforge/evidence/generated"
+        else "/opt/devshield/evidence/generated"
     )
 
     analysis_dir.mkdir(
@@ -713,7 +713,7 @@ def main() -> None:
             decision_log,
         )
 
-        print("[SentinelForge] AI analysis skipped: GEMINI_API_KEY not configured.")
+        print("[DevShield] AI analysis skipped: GEMINI_API_KEY not configured.")
         return
 
     # ---------------------------------------------------------
@@ -774,7 +774,7 @@ def main() -> None:
     # ---------------------------------------------------------
 
     instructions = """
-You are the advisory AI security-analysis layer for SentinelForge AI,
+You are the advisory AI security-analysis layer for DevShield AI,
 a controlled local DevSecOps security assessment.
 
 Use only the supplied E014 evidence packet.
@@ -815,7 +815,7 @@ Keep each remediation or verification item under 180 characters.
 """
 
     user_prompt = (
-        "Analyze the following SentinelForge AI E014 evidence summary.\n\n"
+        "Analyze the following DevShield AI E014 evidence summary.\n\n"
         + json.dumps(
             evidence,
             indent=2,
@@ -916,7 +916,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "error", "finish_reason": finish_reason},
                 decision_log,
             )
-            print("[SentinelForge] AI analysis error: Response truncated (MAX_TOKENS).")
+            print("[DevShield] AI analysis error: Response truncated (MAX_TOKENS).")
             return
 
         output_text = extract_candidate_text(result)
@@ -968,7 +968,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "error", "reason": "Invalid JSON"},
                 decision_log,
             )
-            print("[SentinelForge] AI analysis error: Invalid JSON returned.")
+            print("[DevShield] AI analysis error: Invalid JSON returned.")
             return
 
         # -----------------------------------------------------
@@ -1015,7 +1015,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "rejected", "validation_errors": validation_errors},
                 decision_log,
             )
-            print("[SentinelForge] AI output rejected by local guardrails.")
+            print("[DevShield] AI output rejected by local guardrails.")
             return
 
         # -----------------------------------------------------
@@ -1103,11 +1103,11 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print("[SentinelForge] AI analysis completed successfully.")
-        print(f"[SentinelForge] Generated {report_path}")
-        print(f"[SentinelForge] Generated {metadata_path}")
-        print(f"[SentinelForge] Generated {structured_path}")
-        print(f"[SentinelForge] Generated {decision_log_path}")
+        print("[DevShield] AI analysis completed successfully.")
+        print(f"[DevShield] Generated {report_path}")
+        print(f"[DevShield] Generated {metadata_path}")
+        print(f"[DevShield] Generated {structured_path}")
+        print(f"[DevShield] Generated {decision_log_path}")
 
     # ---------------------------------------------------------
     # HTTP/API errors
@@ -1158,7 +1158,7 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print(f"[SentinelForge] Gemini HTTP error: {exc.code}")
+        print(f"[DevShield] Gemini HTTP error: {exc.code}")
 
     # ---------------------------------------------------------
     # Network / response errors
@@ -1202,7 +1202,7 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print(f"[SentinelForge] AI analysis error: {type(exc).__name__}: {exc}")
+        print(f"[DevShield] AI analysis error: {type(exc).__name__}: {exc}")
 
 
 if __name__ == "__main__":

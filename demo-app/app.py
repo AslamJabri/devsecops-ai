@@ -9,7 +9,7 @@ def set_security_headers(response):
 
 @app.get("/")
 def index():
-    return jsonify(service="sentinelforge-demo-app", environment="local-lab", data="safe dummy data only")
+    return jsonify(service="devshield-demo-app", environment="local-lab", data="safe dummy data only")
 
 
 @app.get("/health")
