@@ -1,7 +1,7 @@
 {
   "evidence_id": "E001",
   "classification": "SIMULATED_BASELINE",
-  "scope": "Project 25 local Docker Compose lab only",
+  "scope": "DevShield AI local Docker Compose lab only",
   "notice": "This file contains fictional assessment observations and no real credentials, targets, or exploit instructions.",
   "findings": [
     {

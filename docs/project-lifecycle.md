@@ -1,6 +1,6 @@
-# Project 25 lifecycle and lab boundary
+# DevShield AI lifecycle and lab boundary
 
-This repository starts with the **Build** phase of the Project 25 assessment. It is intentionally a small, local-only lab and contains no real secrets, production systems, or exploitation steps.
+This repository starts with the **Build** phase of the DevShield AI assessment. It is intentionally a small, local-only lab and contains no real secrets, production systems, or exploitation steps.
 
 | Project phase | Current repository support | Next evidence-driven step |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Project 25 deterministic evidence analysis.
+DevShield AI deterministic evidence analysis.
 
 Purpose:
 - Read scanner-generated evidence.
@@ -92,7 +92,7 @@ def deterministic_risk_score(
     trivy_counts: Counter,
 ) -> dict[str, Any]:
     """
-    Simple Project 25 baseline scoring model.
+    Simple DevShield AI baseline scoring model.
 
     This is intentionally transparent and deterministic.
     It is not a replacement for CVSS or organizational risk methodology.
@@ -268,7 +268,7 @@ def main() -> None:
         "evidence_packet": "E014",
         "schema_version": "1.0",
         "scope": (
-            "Project 25 local pre-deployment "
+            "DevShield AI local pre-deployment "
             "DevSecOps assessment only"
         ),
         "assessment_phase": "baseline",
