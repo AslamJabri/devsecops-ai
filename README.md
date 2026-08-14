@@ -6,13 +6,13 @@ A small, reproducible macOS-friendly local lab for an evidence-led Jenkins DevSe
 
 - **Jenkins** at `http://localhost:8080` (or `JENKINS_HTTP_PORT`)
 - **Demo application** at `http://localhost:5001` (or `DEMO_APP_PORT`)
-- A pre-created Jenkins job: **DevShield AI - Evidence Assessment**, which clones the configured GitHub repository's `main` branch
+- A pre-created Jenkins job: **DevShield AI - Evidence Assessment**, which clones one repository you explicitly authorize for assessment
 
-The job copies only fictional observations into a fingerprinted evidence bundle. It does not contact external systems or run exploit code.
+The job clones the repository configured as its authorized target, creates a fingerprinted evidence bundle, and does not run exploit code.
 
-The public repository URL and branch are configured in `.env` as `DEVSHIELD_GIT_URL` and `DEVSHIELD_GIT_BRANCH`. For a private repository, add a Jenkins credential and update the checkout configuration rather than placing a token in `.env`.
+Set `DEVSHIELD_TARGET_GIT_URL`, `DEVSHIELD_TARGET_GIT_BRANCH`, and `DEVSHIELD_AUTHORIZATION_ACK=I_HAVE_PERMISSION` in `.env`. The acknowledgment is required before the job will clone a target. For a private repository, create a Jenkins credential and set only its ID in `DEVSHIELD_TARGET_GIT_CREDENTIALS_ID`; never put a token in `.env`.
 
-The assessment stages run Gitleaks, Bandit, and pip-audit against the included safe demo application, then build its local container image and scan it with Trivy. They archive evidence for deterministic analysis and advisory Gemini insight. DAST is deliberately deferred to an authorized staging deployment. See [the assessment notes](docs/assessment-stage.md).
+The assessment stages run Gitleaks, Bandit, and pip-audit against the authorized repository, then build its container image when it contains a Dockerfile and scan it with Trivy. They archive evidence for deterministic analysis and advisory Gemini insight. DAST is deliberately deferred to an authorized staging deployment. See [the assessment notes](docs/assessment-stage.md).
 
 The Jenkins image includes a pinned Docker command-line client and uses Docker Desktop through the local socket mount only for the container assessment stage.
 

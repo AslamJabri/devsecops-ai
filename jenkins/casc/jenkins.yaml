@@ -21,7 +21,7 @@ jobs:
   - script: |
       pipelineJob('devshield-ai-assessment') {
         displayName('DevShield AI - Evidence Assessment')
-        description('Assesses only the included safe demo app and produces evidence-led, advisory AI analysis. No exploitation or external target assessment is performed.')
+        description('Clones and assesses one repository explicitly authorized by the operator. Produces evidence-led, advisory AI analysis. No exploitation is performed.')
         definition {
           cps {
             sandbox()
@@ -32,9 +32,21 @@ jobs:
                 stage('Confirm lab scope and checkout') {
                   steps {
                     deleteDir()
-                    echo 'DevShield AI - safe local assessment only; no external targets.'
+                    echo 'DevShield AI - authorized repository assessment only; no exploitation.'
                     dir('source') {
-                      git branch: env.DEVSHIELD_GIT_BRANCH, url: env.DEVSHIELD_GIT_URL
+                      git branch: env.DEVSHIELD_TOOL_GIT_BRANCH, url: env.DEVSHIELD_TOOL_GIT_URL
+                    }
+                    sh """
+                      set -eu
+                      test "\\$DEVSHIELD_AUTHORIZATION_ACK" = 'I_HAVE_PERMISSION'
+                      test -n "\\$DEVSHIELD_TARGET_GIT_URL"
+                    """
+                    dir('target') {
+                      if (env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID) {
+                        git branch: env.DEVSHIELD_TARGET_GIT_BRANCH, url: env.DEVSHIELD_TARGET_GIT_URL, credentialsId: env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID
+                      } else {
+                        git branch: env.DEVSHIELD_TARGET_GIT_BRANCH, url: env.DEVSHIELD_TARGET_GIT_URL
+                      }
                     }
                     sh """
                       set -eu
@@ -42,7 +54,6 @@ jobs:
                       test -f source/scripts/build-and-scan-image.sh
                       test -f source/scripts/analyze-evidence.py
                       test -f source/scripts/run-ai-security-analysis.py
-                      test -f source/demo-app/Dockerfile
                     """
                   }
                 }
@@ -52,36 +63,36 @@ jobs:
                       set -eu
                       mkdir -p generated /opt/devshield/evidence/generated
                       printf '%s\\n' \\
-                        'DevShield AI local baseline assessment' \\
-                        "Repository: \\$DEVSHIELD_GIT_URL" \\
-                        "Branch: \\$DEVSHIELD_GIT_BRANCH" \\
-                        'Scope: included safe demo-app only' > generated/E001-baseline-scope.txt
-                      git -C source rev-parse HEAD > generated/E002-source-commit.txt
-                      find source/demo-app -maxdepth 3 -type f | sort > generated/E003-demo-app-file-inventory.txt
-                      sha256sum generated/E001-baseline-scope.txt generated/E002-source-commit.txt generated/E003-demo-app-file-inventory.txt > generated/E003-checksums.sha256
+                        'DevShield AI authorized repository assessment' \\
+                        "Target repository: \\$DEVSHIELD_TARGET_GIT_URL" \\
+                        "Target branch: \\$DEVSHIELD_TARGET_GIT_BRANCH" \\
+                        'Authorization acknowledgment: I_HAVE_PERMISSION' > generated/E001-baseline-scope.txt
+                      git -C target rev-parse HEAD > generated/E002-target-commit.txt
+                      find target -maxdepth 3 -type f | sort > generated/E003-target-file-inventory.txt
+                      sha256sum generated/E001-baseline-scope.txt generated/E002-target-commit.txt generated/E003-target-file-inventory.txt > generated/E003-checksums.sha256
                       cp generated/* /opt/devshield/evidence/generated/
                     """
                     archiveArtifacts artifacts: 'generated/**', fingerprint: true
                   }
                 }
-                stage('Assess safe demo application') {
+                stage('Assess authorized repository') {
                   steps {
                     sh """
                       set -eu
                       rm -rf scan-results
                       mkdir -p scan-results
-                      sh source/scripts/run-local-assessment.sh source/demo-app scan-results /opt/devshield/evidence/generated
+                      sh source/scripts/run-local-assessment.sh target scan-results /opt/devshield/evidence/generated
                     """
                     archiveArtifacts artifacts: 'scan-results/**', fingerprint: true, allowEmptyArchive: true
                   }
                 }
-                stage('Build and scan demo container') {
+                stage('Build and scan target container') {
                   steps {
                     sh """
                       set -eu
                       rm -rf container-results
                       mkdir -p container-results
-                      sh source/scripts/build-and-scan-image.sh source/demo-app container-results /opt/devshield/evidence/generated
+                      sh source/scripts/build-and-scan-image.sh target container-results /opt/devshield/evidence/generated
                     """
                     archiveArtifacts artifacts: 'container-results/**', fingerprint: true, allowEmptyArchive: true
                   }
