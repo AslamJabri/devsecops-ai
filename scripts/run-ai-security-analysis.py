@@ -11,6 +11,9 @@ Security design:
 - Gemini response must conform to structured JSON.
 - Referenced evidence IDs are validated locally.
 - Deterministic risk score cannot be modified by AI.
+- Confidence gating downgrades low-confidence findings.
+- Verification steps provide actionable re-testing guidance.
+- E020 Decision Log generated for regulatory compliance.
 """
 
 from __future__ import annotations
@@ -77,10 +80,12 @@ def write_artifacts(
     report_path: Path,
     metadata_path: Path,
     structured_path: Path,
+    decision_log_path: Path,
     evidence_dir: Path,
     report_text: str,
     metadata: dict[str, Any],
     structured_output: dict[str, Any],
+    decision_log: dict[str, Any],
 ) -> None:
     report_path.write_text(
         report_text,
@@ -97,11 +102,17 @@ def write_artifacts(
         structured_output,
     )
 
+    write_json(
+        decision_log_path,
+        decision_log,
+    )
+
     copy_to_evidence(
         [
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
         ],
         evidence_dir,
     )
@@ -135,7 +146,7 @@ def extract_finish_reason(
 
 
 # ---------------------------------------------------------
-# Structured-output schema (Constrained Fix 4 & 5)
+# Structured-output schema (Improvement 3: Verification Steps)
 # ---------------------------------------------------------
 
 
@@ -197,6 +208,14 @@ AI_RESPONSE_SCHEMA = {
                             "maxLength": 300,
                         },
                     },
+                    "verification_steps": {
+                        "type": "array",
+                        "maxItems": 5,
+                        "items": {
+                            "type": "string",
+                            "maxLength": 300,
+                        },
+                    },
                 },
                 "required": [
                     "finding_id",
@@ -207,6 +226,7 @@ AI_RESPONSE_SCHEMA = {
                     "analysis",
                     "root_cause_candidate",
                     "remediation",
+                    "verification_steps",
                 ],
             },
         },
@@ -357,7 +377,7 @@ AI_RESPONSE_SCHEMA = {
 
 
 # ---------------------------------------------------------
-# Validation
+# Validation & Post-Processing
 # ---------------------------------------------------------
 
 
@@ -407,31 +427,44 @@ def validate_ai_authority(
 ) -> list[str]:
     errors: list[str] = []
 
-    for row in ai_output.get(
-        "mitre_candidates",
-        [],
-    ):
-        if not row.get(
-            "human_verification_required",
-            False,
-        ):
+    for row in ai_output.get("mitre_candidates", []):
+        if not row.get("human_verification_required", False):
             errors.append(
                 "MITRE candidate omitted required human verification flag"
             )
 
-    for row in ai_output.get(
-        "d3fend_candidates",
-        [],
-    ):
-        if not row.get(
-            "human_verification_required",
-            False,
-        ):
+    for row in ai_output.get("d3fend_candidates", []):
+        if not row.get("human_verification_required", False):
             errors.append(
                 "D3FEND candidate omitted required human verification flag"
             )
 
     return errors
+
+
+def apply_confidence_gating(
+    ai_output: dict[str, Any],
+    threshold: float = 0.5,
+) -> list[str]:
+    """Improvement 2: AI confidence gating guardrail."""
+    gating_actions = []
+
+    for finding in ai_output.get("findings", []):
+        confidence = finding.get("confidence", 0.0)
+
+        if confidence < threshold:
+            old_priority = finding.get("priority", "unknown")
+            finding["priority"] = "informational"
+            finding["analysis"] = (
+                finding.get("analysis", "")
+                + f" [CONFIDENCE GATED: Model confidence ({confidence}) < threshold ({threshold}). Priority downgraded from {old_priority} to informational. Manual validation required.]"
+            )
+
+            gating_actions.append(
+                f"Downgraded finding {finding.get('finding_id')} from {old_priority} to informational due to low confidence ({confidence})"
+            )
+
+    return gating_actions
 
 
 # ---------------------------------------------------------
@@ -478,10 +511,7 @@ def render_markdown(
     lines.append("## Evidence-Based Findings")
     lines.append("")
 
-    findings = ai_output.get(
-        "findings",
-        [],
-    )
+    findings = ai_output.get("findings", [])
 
     if not findings:
         lines.append("No AI findings were generated.")
@@ -509,26 +539,24 @@ def render_markdown(
         )
         lines.append("")
 
-        remediation = finding.get(
-            "remediation",
-            [],
-        )
-
+        remediation = finding.get("remediation", [])
         if remediation:
             lines.append("**Recommended remediation:**")
-
             for item in remediation:
                 lines.append(f"- {item}")
+            lines.append("")
 
+        verification_steps = finding.get("verification_steps", [])
+        if verification_steps:
+            lines.append("**Verification / Re-testing steps:**")
+            for step in verification_steps:
+                lines.append(f"1. {step}")
             lines.append("")
 
     lines.append("## Correlations")
     lines.append("")
 
-    correlations = ai_output.get(
-        "correlations",
-        [],
-    )
+    correlations = ai_output.get("correlations", [])
 
     if not correlations:
         lines.append("No evidence correlations were proposed.")
@@ -548,10 +576,7 @@ def render_markdown(
     lines.append("## MITRE ATT&CK Candidates")
     lines.append("")
 
-    mitre = ai_output.get(
-        "mitre_candidates",
-        [],
-    )
+    mitre = ai_output.get("mitre_candidates", [])
 
     if not mitre:
         lines.append("No ATT&CK candidates proposed.")
@@ -573,10 +598,7 @@ def render_markdown(
     lines.append("## D3FEND Candidates")
     lines.append("")
 
-    d3fend = ai_output.get(
-        "d3fend_candidates",
-        [],
-    )
+    d3fend = ai_output.get("d3fend_candidates", [])
 
     if not d3fend:
         lines.append("No D3FEND candidates proposed.")
@@ -594,10 +616,7 @@ def render_markdown(
     lines.append("## Recommended Actions")
     lines.append("")
 
-    for action in ai_output.get(
-        "recommended_actions",
-        [],
-    ):
+    for action in ai_output.get("recommended_actions", []):
         lines.append(f"- {action}")
 
     lines.append("")
@@ -605,10 +624,7 @@ def render_markdown(
     lines.append("## Limitations")
     lines.append("")
 
-    for limitation in ai_output.get(
-        "limitations",
-        [],
-    ):
+    for limitation in ai_output.get("limitations", []):
         lines.append(f"- {limitation}")
 
     lines.append("")
@@ -649,16 +665,10 @@ def main() -> None:
     metadata_path = analysis_dir / "E017-ai-analysis-metadata.json"
     structured_path = analysis_dir / "E018-ai-security-analysis.json"
     debug_api_path = analysis_dir / "E018-gemini-api-response.json"
+    decision_log_path = analysis_dir / "E020-ai-decision-log.json"
 
-    api_key = os.environ.get(
-        "GEMINI_API_KEY",
-        "",
-    ).strip()
-
-    model = os.environ.get(
-        "GEMINI_MODEL",
-        "gemini-3.6-flash",
-    ).strip()
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
 
     # ---------------------------------------------------------
     # No API key
@@ -681,17 +691,26 @@ def main() -> None:
             "reason": "GEMINI_API_KEY is not configured",
         }
 
+        decision_log = {
+            "evidence_id": "E020",
+            "ai_model": model,
+            "input": "None",
+            "status": "skipped",
+            "decision_types": [],
+            "human_verification_required": True,
+            "timestamp": utc_now(),
+        }
+
         write_artifacts(
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
             evidence_dir,
-            (
-                "# AI Security Analysis\n\n"
-                "Skipped: GEMINI_API_KEY is not configured.\n"
-            ),
+            "# AI Security Analysis\n\nSkipped: GEMINI_API_KEY is not configured.\n",
             metadata,
             structured_output,
+            decision_log,
         )
 
         print("[Project25] AI analysis skipped: GEMINI_API_KEY not configured.")
@@ -717,35 +736,43 @@ def main() -> None:
             "generated_at": utc_now(),
         }
 
+        decision_log = {
+            "evidence_id": "E020",
+            "ai_model": model,
+            "input": "E014 (failed to load)",
+            "status": "error",
+            "human_verification_required": True,
+            "timestamp": utc_now(),
+        }
+
         write_artifacts(
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
             evidence_dir,
-            (
-                "# AI Security Analysis\n\n"
-                "Skipped: E014 evidence summary is unavailable or invalid.\n"
-            ),
+            "# AI Security Analysis\n\nSkipped: E014 evidence summary is unavailable or invalid.\n",
             metadata,
-            {
-                "status": "error",
-                "reason": "E014 evidence summary unavailable or invalid",
-            },
+            {"status": "error", "reason": "E014 evidence summary unavailable or invalid"},
+            decision_log,
         )
         return
 
     # ---------------------------------------------------------
-    # Integrity metadata
+    # Integrity metadata & Allowed Evidence List (Improvement 1)
     # ---------------------------------------------------------
 
     evidence_json = canonical_json(evidence)
     input_sha256 = sha256_text(evidence_json)
 
-    allowed_evidence_ids = set(evidence.get("source_evidence", []))
+    # Allowed IDs: Scanner evidence + analysis layer packages (E014, E015)
+    allowed_evidence_ids = set(
+        evidence.get("source_evidence", []) + ["E014", "E015"]
+    )
     deterministic_score = evidence.get("risk_score", {})
 
     # ---------------------------------------------------------
-    # System instruction (Fix 3: Concise limits)
+    # System instruction
     # ---------------------------------------------------------
 
     instructions = """
@@ -771,6 +798,9 @@ STRICT RULES:
 Be concise. Do not repeat every individual vulnerability.
 Summarize scanner categories and significant severity counts.
 
+For every finding, provide actionable verification_steps so developers
+can re-test and verify controls after applying remediations.
+
 Generate at most:
 - 5 findings
 - 3 correlations
@@ -780,7 +810,7 @@ Generate at most:
 - 5 limitations
 
 Keep each analysis or reason under 300 characters.
-Keep each remediation item under 180 characters.
+Keep each remediation or verification item under 180 characters.
 """
 
     user_prompt = (
@@ -793,7 +823,7 @@ Keep each remediation item under 180 characters.
     )
 
     # ---------------------------------------------------------
-    # Gemini payload (Fix 1: maxOutputTokens = 8192)
+    # Gemini payload
     # ---------------------------------------------------------
 
     payload = {
@@ -846,11 +876,9 @@ Keep each remediation item under 180 characters.
         with urllib.request.urlopen(request, timeout=90) as response:
             result = json.loads(response.read().decode("utf-8"))
 
-        # Fix 6: Save raw API response for debugging/audit
         write_json(debug_api_path, result)
         copy_to_evidence([debug_api_path], evidence_dir)
 
-        # Fix 2: Extract finishReason
         finish_reason = extract_finish_reason(result)
 
         if finish_reason == "MAX_TOKENS":
@@ -863,33 +891,31 @@ Keep each remediation item under 180 characters.
                 "error": "Structured response was truncated due to output token limit",
                 "input_sha256": input_sha256,
                 "external_data_sent": True,
-                "raw_scanner_output_sent": False,
-                "raw_source_code_sent": False,
-                "credentials_sent": False,
                 "generated_at": utc_now(),
+            }
+
+            decision_log = {
+                "evidence_id": "E020",
+                "ai_model": model,
+                "input": "E014 only",
+                "status": "error",
+                "error": "Truncated at max tokens",
+                "human_verification_required": True,
+                "timestamp": utc_now(),
             }
 
             write_artifacts(
                 report_path,
                 metadata_path,
                 structured_path,
+                decision_log_path,
                 evidence_dir,
-                (
-                    "# AI Security Analysis\n\n"
-                    "Error: Gemini response was truncated because the output token limit was reached.\n"
-                    "Review E017 metadata.\n"
-                ),
+                "# AI Security Analysis\n\nError: Response truncated at max tokens.\n",
                 metadata,
-                {
-                    "status": "error",
-                    "finish_reason": finish_reason,
-                    "reason": "Structured response was truncated",
-                },
+                {"status": "error", "finish_reason": finish_reason},
+                decision_log,
             )
-
-            print(
-                "[Project25] AI analysis error: Response truncated (MAX_TOKENS)."
-            )
+            print("[Project25] AI analysis error: Response truncated (MAX_TOKENS).")
             return
 
         output_text = extract_candidate_text(result)
@@ -898,7 +924,7 @@ Keep each remediation item under 180 characters.
             raise ValueError("Gemini returned no text output")
 
         # -----------------------------------------------------
-        # Parse structured output (Fix 7: E018-debug-invalid-response.txt)
+        # Parse structured output
         # -----------------------------------------------------
 
         try:
@@ -907,9 +933,7 @@ Keep each remediation item under 180 characters.
         except json.JSONDecodeError as exc:
             debug_path = analysis_dir / "E018-debug-invalid-response.txt"
             debug_path.write_text(output_text + "\n", encoding="utf-8")
-            (evidence_dir / debug_path.name).write_bytes(
-                debug_path.read_bytes()
-            )
+            (evidence_dir / debug_path.name).write_bytes(debug_path.read_bytes())
 
             metadata = {
                 "evidence_id": "E017",
@@ -919,32 +943,30 @@ Keep each remediation item under 180 characters.
                 "finish_reason": finish_reason,
                 "error": "Gemini returned invalid JSON",
                 "input_sha256": input_sha256,
-                "external_data_sent": True,
-                "raw_scanner_output_sent": False,
-                "raw_source_code_sent": False,
-                "credentials_sent": False,
                 "generated_at": utc_now(),
+            }
+
+            decision_log = {
+                "evidence_id": "E020",
+                "ai_model": model,
+                "input": "E014 only",
+                "status": "error",
+                "error": "Invalid JSON response",
+                "human_verification_required": True,
+                "timestamp": utc_now(),
             }
 
             write_artifacts(
                 report_path,
                 metadata_path,
                 structured_path,
+                decision_log_path,
                 evidence_dir,
-                (
-                    "# AI Security Analysis\n\n"
-                    "Error: Gemini returned invalid JSON.\n"
-                    "Raw response saved to E018-debug-invalid-response.txt.\n"
-                    "Review E017 metadata.\n"
-                ),
+                "# AI Security Analysis\n\nError: Gemini returned invalid JSON.\n",
                 metadata,
-                {
-                    "status": "error",
-                    "finish_reason": finish_reason,
-                    "reason": "Gemini returned invalid JSON",
-                },
+                {"status": "error", "reason": "Invalid JSON"},
+                decision_log,
             )
-
             print("[Project25] AI analysis error: Invalid JSON returned.")
             return
 
@@ -953,14 +975,9 @@ Keep each remediation item under 180 characters.
         # -----------------------------------------------------
 
         validation_errors = []
-
         validation_errors.extend(
-            validate_evidence_references(
-                ai_output,
-                allowed_evidence_ids,
-            )
+            validate_evidence_references(ai_output, allowed_evidence_ids)
         )
-
         validation_errors.extend(validate_ai_authority(ai_output))
 
         if validation_errors:
@@ -970,47 +987,88 @@ Keep each remediation item under 180 characters.
                 "provider": "Gemini",
                 "model": model,
                 "finish_reason": finish_reason,
-                "input": "E014 local analysis summary only",
                 "input_sha256": input_sha256,
-                "external_data_sent": True,
-                "raw_scanner_output_sent": False,
-                "raw_source_code_sent": False,
-                "credentials_sent": False,
-                "ai_authority": "advisory-only",
-                "human_verification_required": True,
                 "output_schema_validation": "failed-local-guardrails",
                 "validation_errors": validation_errors,
                 "generated_at": utc_now(),
+            }
+
+            decision_log = {
+                "evidence_id": "E020",
+                "ai_model": model,
+                "input": "E014 only",
+                "status": "rejected",
+                "validation_errors": validation_errors,
+                "human_verification_required": True,
+                "timestamp": utc_now(),
             }
 
             write_artifacts(
                 report_path,
                 metadata_path,
                 structured_path,
+                decision_log_path,
                 evidence_dir,
-                (
-                    "# AI Security Analysis\n\n"
-                    "AI output was rejected by local validation guardrails.\n\n"
-                    "Review E017 metadata.\n"
-                ),
+                "# AI Security Analysis\n\nAI output was rejected by local validation guardrails.\n",
                 metadata,
-                {
-                    "status": "rejected",
-                    "validation_errors": validation_errors,
-                },
+                {"status": "rejected", "validation_errors": validation_errors},
+                decision_log,
             )
-
             print("[Project25] AI output rejected by local guardrails.")
             return
 
         # -----------------------------------------------------
-        # Generate human-readable report
+        # Improvement 2: Apply Confidence Gating Guardrail
         # -----------------------------------------------------
 
-        report_text = render_markdown(
-            ai_output,
-            deterministic_score,
-        )
+        gating_actions = apply_confidence_gating(ai_output, threshold=0.5)
+
+        # -----------------------------------------------------
+        # Improvement 4: Generate E020 AI Decision Log
+        # -----------------------------------------------------
+
+        decision_log = {
+            "evidence_id": "E020",
+            "ai_model": model,
+            "input": "E014 local analysis summary only",
+            "status": "approved_advisory",
+            "decisions_generated": {
+                "findings_analyzed": len(ai_output.get("findings", [])),
+                "correlations_proposed": len(ai_output.get("correlations", [])),
+                "mitre_candidates": len(ai_output.get("mitre_candidates", [])),
+                "d3fend_candidates": len(ai_output.get("d3fend_candidates", [])),
+                "remediations_generated": sum(
+                    len(f.get("remediation", []))
+                    for f in ai_output.get("findings", [])
+                ),
+                "verification_steps_generated": sum(
+                    len(f.get("verification_steps", []))
+                    for f in ai_output.get("findings", [])
+                ),
+            },
+            "guardrails_applied": {
+                "confidence_gating_applied": len(gating_actions) > 0,
+                "gating_actions": gating_actions,
+                "evidence_reference_validation": "passed",
+                "authority_validation": "passed",
+            },
+            "decision_types": [
+                "risk_explanation",
+                "root_cause_candidate_identification",
+                "remediation_suggestion",
+                "verification_step_mapping",
+                "mitre_attack_candidate_mapping",
+                "d3fend_control_candidate_mapping",
+            ],
+            "human_verification_required": True,
+            "generated_at": utc_now(),
+        }
+
+        # -----------------------------------------------------
+        # Render and Write Final Artifacts
+        # -----------------------------------------------------
+
+        report_text = render_markdown(ai_output, deterministic_score)
 
         metadata = {
             "evidence_id": "E017",
@@ -1020,7 +1078,7 @@ Keep each remediation item under 180 characters.
             "finish_reason": finish_reason,
             "input": "E014 local analysis summary only",
             "input_sha256": input_sha256,
-            "input_evidence": ["E014"],
+            "input_evidence": ["E014", "E015"],
             "raw_scanner_output_sent": False,
             "raw_source_code_sent": False,
             "credentials_sent": False,
@@ -1036,37 +1094,33 @@ Keep each remediation item under 180 characters.
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
             evidence_dir,
             report_text,
             metadata,
             ai_output,
+            decision_log,
         )
 
-        print("[Project25] AI analysis completed.")
+        print("[Project25] AI analysis completed successfully.")
         print(f"[Project25] Generated {report_path}")
         print(f"[Project25] Generated {metadata_path}")
         print(f"[Project25] Generated {structured_path}")
+        print(f"[Project25] Generated {decision_log_path}")
 
     # ---------------------------------------------------------
     # HTTP/API errors
     # ---------------------------------------------------------
 
     except urllib.error.HTTPError as exc:
-        error_body = exc.read().decode(
-            "utf-8",
-            errors="replace",
-        )
+        error_body = exc.read().decode("utf-8", errors="replace")
 
         try:
             api_message = (
                 json.loads(error_body)
                 .get("error", {})
-                .get(
-                    "message",
-                    error_body[:1000],
-                )
+                .get("message", error_body[:1000])
             )
-
         except json.JSONDecodeError:
             api_message = error_body[:1000]
 
@@ -1078,27 +1132,29 @@ Keep each remediation item under 180 characters.
             "http_status": exc.code,
             "api_error": api_message,
             "input_sha256": input_sha256,
-            "external_data_sent": True,
-            "raw_scanner_output_sent": False,
-            "raw_source_code_sent": False,
-            "credentials_sent": False,
             "generated_at": utc_now(),
+        }
+
+        decision_log = {
+            "evidence_id": "E020",
+            "ai_model": model,
+            "input": "E014 only",
+            "status": "error",
+            "http_status": exc.code,
+            "human_verification_required": True,
+            "timestamp": utc_now(),
         }
 
         write_artifacts(
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
             evidence_dir,
-            (
-                "# AI Security Analysis\n\n"
-                "Gemini request failed. Review E017 metadata.\n"
-            ),
+            "# AI Security Analysis\n\nGemini request failed. Review E017 metadata.\n",
             metadata,
-            {
-                "status": "error",
-                "http_status": exc.code,
-            },
+            {"status": "error", "http_status": exc.code},
+            decision_log,
         )
 
         print(f"[Project25] Gemini HTTP error: {exc.code}")
@@ -1120,27 +1176,29 @@ Keep each remediation item under 180 characters.
             "error_type": type(exc).__name__,
             "error": str(exc),
             "input_sha256": input_sha256,
-            "external_data_sent": True,
-            "raw_scanner_output_sent": False,
-            "raw_source_code_sent": False,
-            "credentials_sent": False,
             "generated_at": utc_now(),
+        }
+
+        decision_log = {
+            "evidence_id": "E020",
+            "ai_model": model,
+            "input": "E014 only",
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "human_verification_required": True,
+            "timestamp": utc_now(),
         }
 
         write_artifacts(
             report_path,
             metadata_path,
             structured_path,
+            decision_log_path,
             evidence_dir,
-            (
-                "# AI Security Analysis\n\n"
-                "Gemini analysis failed. Review E017 metadata.\n"
-            ),
+            "# AI Security Analysis\n\nGemini analysis failed. Review E017 metadata.\n",
             metadata,
-            {
-                "status": "error",
-                "error_type": type(exc).__name__,
-            },
+            {"status": "error", "error_type": type(exc).__name__},
+            decision_log,
         )
 
         print(f"[Project25] AI analysis error: {type(exc).__name__}: {exc}")
