@@ -36,11 +36,14 @@ jobs:
                     dir('source') {
                       git branch: env.DEVSHIELD_TOOL_GIT_BRANCH, url: env.DEVSHIELD_TOOL_GIT_URL
                     }
-                    sh """
-                      set -eu
-                      test "\\$DEVSHIELD_AUTHORIZATION_ACK" = 'I_HAVE_PERMISSION'
-                      test -n "\\$DEVSHIELD_TARGET_GIT_URL"
-                    """
+                    script {
+                      if (env.DEVSHIELD_AUTHORIZATION_ACK != 'I_HAVE_PERMISSION') {
+                        error('Set DEVSHIELD_AUTHORIZATION_ACK=I_HAVE_PERMISSION before assessing a repository.')
+                      }
+                      if (!env.DEVSHIELD_TARGET_GIT_URL?.trim()) {
+                        error('Set DEVSHIELD_TARGET_GIT_URL to an authorized repository before building.')
+                      }
+                    }
                     dir('target') {
                       if (env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID) {
                         git branch: env.DEVSHIELD_TARGET_GIT_BRANCH, url: env.DEVSHIELD_TARGET_GIT_URL, credentialsId: env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID
@@ -64,8 +67,8 @@ jobs:
                       mkdir -p generated /opt/devshield/evidence/generated
                       printf '%s\\n' \\
                         'DevShield AI authorized repository assessment' \\
-                        "Target repository: \\$DEVSHIELD_TARGET_GIT_URL" \\
-                        "Target branch: \\$DEVSHIELD_TARGET_GIT_BRANCH" \\
+                        "Target repository: ${env.DEVSHIELD_TARGET_GIT_URL}" \\
+                        "Target branch: ${env.DEVSHIELD_TARGET_GIT_BRANCH}" \\
                         'Authorization acknowledgment: I_HAVE_PERMISSION' > generated/E001-baseline-scope.txt
                       git -C target rev-parse HEAD > generated/E002-target-commit.txt
                       find target -maxdepth 3 -type f | sort > generated/E003-target-file-inventory.txt
