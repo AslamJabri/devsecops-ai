@@ -51,10 +51,12 @@ jobs:
                       }
                     }
                     dir('target') {
-                      if (params.TARGET_CREDENTIALS_ID) {
-                        git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL, credentialsId: params.TARGET_CREDENTIALS_ID
-                      } else {
-                        git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL
+                      script {
+                        if (params.TARGET_CREDENTIALS_ID) {
+                          git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL, credentialsId: params.TARGET_CREDENTIALS_ID
+                        } else {
+                          git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL
+                        }
                       }
                     }
                     sh """
