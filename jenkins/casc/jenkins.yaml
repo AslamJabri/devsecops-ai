@@ -73,8 +73,8 @@ jobs:
                       mkdir -p generated /opt/devshield/evidence/generated
                       printf '%s\\n' \\
                         'DevShield AI authorized repository assessment' \\
-                        "Target repository: ${params.TARGET_REPOSITORY_URL}" \\
-                        "Target branch: ${params.TARGET_BRANCH}" \\
+                        "Target repository: $params.TARGET_REPOSITORY_URL" \\
+                        "Target branch: $params.TARGET_BRANCH" \\
                         'Authorization acknowledged in Jenkins build parameters' > generated/E001-baseline-scope.txt
                       git -C target rev-parse HEAD > generated/E002-target-commit.txt
                       find target -maxdepth 3 -type f | sort > generated/E003-target-file-inventory.txt
