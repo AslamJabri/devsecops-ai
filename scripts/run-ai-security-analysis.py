@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Project 25 evidence-grounded Gemini security analysis.
+SentinelForge AI evidence-grounded Gemini security analysis.
 
 Security design:
 - Sends E014 only.
@@ -478,7 +478,7 @@ def render_markdown(
 ) -> str:
     lines: list[str] = []
 
-    lines.append("# AI Security Analysis — Human Review Required")
+    lines.append("# SentinelForge AI Security Analysis - Human Review Required")
     lines.append("")
 
     lines.append("## Deterministic Risk Context")
@@ -519,7 +519,7 @@ def render_markdown(
 
     for finding in findings:
         lines.append(
-            f"### {finding.get('finding_id')} — {finding.get('title')}"
+            f"### {finding.get('finding_id')} - {finding.get('title')}"
         )
         lines.append("")
 
@@ -566,7 +566,7 @@ def render_markdown(
         lines.append(
             "- Evidence "
             + ", ".join(correlation.get("evidence_ids", []))
-            + f" — confidence {correlation.get('confidence')}"
+            + f" - confidence {correlation.get('confidence')}"
         )
 
         lines.append(f"  {correlation.get('analysis', '')}")
@@ -647,7 +647,7 @@ def main() -> None:
     evidence_dir = Path(
         sys.argv[2]
         if len(sys.argv) > 2
-        else "/opt/project25/evidence/generated"
+        else "/opt/sentinelforge/evidence/generated"
     )
 
     analysis_dir.mkdir(
@@ -713,7 +713,7 @@ def main() -> None:
             decision_log,
         )
 
-        print("[Project25] AI analysis skipped: GEMINI_API_KEY not configured.")
+        print("[SentinelForge] AI analysis skipped: GEMINI_API_KEY not configured.")
         return
 
     # ---------------------------------------------------------
@@ -765,10 +765,8 @@ def main() -> None:
     evidence_json = canonical_json(evidence)
     input_sha256 = sha256_text(evidence_json)
 
-    # Allowed IDs: Scanner evidence + analysis layer packages (E014, E015)
-    allowed_evidence_ids = set(
-        evidence.get("source_evidence", []) + ["E014", "E015"]
-    )
+    # Only raw scanner evidence may support AI claims; E014 is transport only.
+    allowed_evidence_ids = set(evidence.get("source_evidence", []))
     deterministic_score = evidence.get("risk_score", {})
 
     # ---------------------------------------------------------
@@ -776,10 +774,13 @@ def main() -> None:
     # ---------------------------------------------------------
 
     instructions = """
-You are the advisory AI security-analysis layer for Project 25,
+You are the advisory AI security-analysis layer for SentinelForge AI,
 a controlled local DevSecOps security assessment.
 
 Use only the supplied E014 evidence packet.
+Every finding, correlation, MITRE candidate, and D3FEND candidate must cite
+only these raw evidence IDs in an evidence_ids field: E004, E005, E006, E007,
+E009, E010. Do not cite E014 or E015 in an evidence_ids field.
 
 STRICT RULES:
 1. Never invent evidence IDs, vulnerabilities, CVEs, scanner results,
@@ -814,7 +815,7 @@ Keep each remediation or verification item under 180 characters.
 """
 
     user_prompt = (
-        "Analyze the following Project 25 E014 evidence summary.\n\n"
+        "Analyze the following SentinelForge AI E014 evidence summary.\n\n"
         + json.dumps(
             evidence,
             indent=2,
@@ -915,7 +916,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "error", "finish_reason": finish_reason},
                 decision_log,
             )
-            print("[Project25] AI analysis error: Response truncated (MAX_TOKENS).")
+            print("[SentinelForge] AI analysis error: Response truncated (MAX_TOKENS).")
             return
 
         output_text = extract_candidate_text(result)
@@ -967,7 +968,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "error", "reason": "Invalid JSON"},
                 decision_log,
             )
-            print("[Project25] AI analysis error: Invalid JSON returned.")
+            print("[SentinelForge] AI analysis error: Invalid JSON returned.")
             return
 
         # -----------------------------------------------------
@@ -1014,7 +1015,7 @@ Keep each remediation or verification item under 180 characters.
                 {"status": "rejected", "validation_errors": validation_errors},
                 decision_log,
             )
-            print("[Project25] AI output rejected by local guardrails.")
+            print("[SentinelForge] AI output rejected by local guardrails.")
             return
 
         # -----------------------------------------------------
@@ -1102,11 +1103,11 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print("[Project25] AI analysis completed successfully.")
-        print(f"[Project25] Generated {report_path}")
-        print(f"[Project25] Generated {metadata_path}")
-        print(f"[Project25] Generated {structured_path}")
-        print(f"[Project25] Generated {decision_log_path}")
+        print("[SentinelForge] AI analysis completed successfully.")
+        print(f"[SentinelForge] Generated {report_path}")
+        print(f"[SentinelForge] Generated {metadata_path}")
+        print(f"[SentinelForge] Generated {structured_path}")
+        print(f"[SentinelForge] Generated {decision_log_path}")
 
     # ---------------------------------------------------------
     # HTTP/API errors
@@ -1157,7 +1158,7 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print(f"[Project25] Gemini HTTP error: {exc.code}")
+        print(f"[SentinelForge] Gemini HTTP error: {exc.code}")
 
     # ---------------------------------------------------------
     # Network / response errors
@@ -1201,7 +1202,7 @@ Keep each remediation or verification item under 180 characters.
             decision_log,
         )
 
-        print(f"[Project25] AI analysis error: {type(exc).__name__}: {exc}")
+        print(f"[SentinelForge] AI analysis error: {type(exc).__name__}: {exc}")
 
 
 if __name__ == "__main__":

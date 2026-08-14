@@ -4,19 +4,19 @@ set -u
 
 TARGET_DIR="${1:-target}"
 OUTPUT_DIR="${2:-scan-results}"
-EVIDENCE_DIR="${3:-/opt/project25/evidence/generated}"
+EVIDENCE_DIR="${3:-/opt/sentinelforge/evidence/generated}"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$EVIDENCE_DIR"
 
-echo "[Project25] Target directory: $TARGET_DIR"
-echo "[Project25] Output directory: $OUTPUT_DIR"
+echo "[SentinelForge] Target directory: $TARGET_DIR"
+echo "[SentinelForge] Output directory: $OUTPUT_DIR"
 
 # --------------------------------------------------
 # E004 - Gitleaks
 # --------------------------------------------------
 
-echo "[Project25] Running Gitleaks..."
+echo "[SentinelForge] Running Gitleaks..."
 
 gitleaks detect \
   --source "$TARGET_DIR" \
@@ -36,7 +36,7 @@ fi
 # E005 - Bandit
 # --------------------------------------------------
 
-echo "[Project25] Running Bandit..."
+echo "[SentinelForge] Running Bandit..."
 
 bandit \
   -r "$TARGET_DIR" \
@@ -54,7 +54,7 @@ fi
 # E006 - pip-audit
 # --------------------------------------------------
 
-echo "[Project25] Running pip-audit..."
+echo "[SentinelForge] Running pip-audit..."
 
 PIP_AUDIT_EXIT=0
 
@@ -73,7 +73,7 @@ else
 fi
 
 if [ -n "$REQUIREMENTS_FILE" ]; then
-  echo "[Project25] Requirements file: $REQUIREMENTS_FILE"
+  echo "[SentinelForge] Requirements file: $REQUIREMENTS_FILE"
 
   pip-audit \
     -r "$REQUIREMENTS_FILE" \
@@ -82,12 +82,12 @@ if [ -n "$REQUIREMENTS_FILE" ]; then
 
   PIP_AUDIT_EXIT=$?
 else
-  echo "[Project25] No requirements file found."
+  echo "[SentinelForge] No requirements file found."
 
   cat > "$OUTPUT_DIR/E006-pip-audit.json" <<'EOF'
 {
   "dependencies": [],
-  "project25_status": "skipped",
+  "sentinelforge_status": "skipped",
   "reason": "No requirements file found"
 }
 EOF
@@ -143,7 +143,7 @@ done
 # Baseline behavior
 # --------------------------------------------------
 
-echo "[Project25] Repository assessment complete."
-echo "[Project25] Baseline mode: scanner findings do not fail the pipeline."
+echo "[SentinelForge] Repository assessment complete."
+echo "[SentinelForge] Baseline mode: scanner findings do not fail the pipeline."
 
 exit 0

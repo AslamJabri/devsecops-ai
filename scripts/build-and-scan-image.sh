@@ -4,16 +4,16 @@ set -u
 
 TARGET_DIR="${1:-target}"
 OUTPUT_DIR="${2:-container-results}"
-EVIDENCE_DIR="${3:-/opt/project25/evidence/generated}"
+EVIDENCE_DIR="${3:-/opt/sentinelforge/evidence/generated}"
 
-IMAGE_NAME="${PROJECT25_IMAGE_NAME:-project25-target:baseline}"
+IMAGE_NAME="${SENTINELFORGE_IMAGE_NAME:-sentinelforge-demo-app:baseline}"
 
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$EVIDENCE_DIR"
 
-echo "[Project25] Container assessment"
-echo "[Project25] Target: $TARGET_DIR"
-echo "[Project25] Image: $IMAGE_NAME"
+echo "[SentinelForge] Container assessment"
+echo "[SentinelForge] Target: $TARGET_DIR"
+echo "[SentinelForge] Image: $IMAGE_NAME"
 
 BUILD_EXIT=0
 TRIVY_EXIT=0
@@ -45,8 +45,8 @@ fi
 if [ -n "$DOCKERFILE" ]; then
   BUILD_CONTEXT="$(dirname "$DOCKERFILE")"
 
-  echo "[Project25] Dockerfile: $DOCKERFILE"
-  echo "[Project25] Build context: $BUILD_CONTEXT"
+  echo "[SentinelForge] Dockerfile: $DOCKERFILE"
+  echo "[SentinelForge] Build context: $BUILD_CONTEXT"
 
   docker build \
     -t "$IMAGE_NAME" \
@@ -55,7 +55,7 @@ if [ -n "$DOCKERFILE" ]; then
 
   BUILD_EXIT=$?
 else
-  echo "[Project25] No Dockerfile found."
+  echo "[SentinelForge] No Dockerfile found."
 
   BUILD_EXIT=2
 fi
@@ -66,7 +66,7 @@ fi
 # --------------------------------------------------
 
 if [ "$BUILD_EXIT" -eq 0 ]; then
-  echo "[Project25] Running Trivy..."
+  echo "[SentinelForge] Running Trivy..."
 
   trivy image \
     --format json \
@@ -75,12 +75,12 @@ if [ "$BUILD_EXIT" -eq 0 ]; then
 
   TRIVY_EXIT=$?
 else
-  echo "[Project25] Image build failed/skipped; Trivy image scan skipped."
+  echo "[SentinelForge] Image build failed/skipped; Trivy image scan skipped."
 
   cat > "$OUTPUT_DIR/E009-trivy-image.json" <<'EOF'
 {
   "Results": [],
-  "project25_status": "skipped",
+  "sentinelforge_status": "skipped",
   "reason": "Container image was not successfully built"
 }
 EOF
@@ -128,7 +128,7 @@ do
 done
 
 
-echo "[Project25] Container assessment complete."
-echo "[Project25] Baseline mode: build/scan findings do not fail the pipeline."
+echo "[SentinelForge] Container assessment complete."
+echo "[SentinelForge] Baseline mode: build/scan findings do not fail the pipeline."
 
 exit 0

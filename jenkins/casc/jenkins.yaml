@@ -1,280 +1,118 @@
 jenkins:
-  systemMessage: "Project 25 — local DevSecOps assessment lab (authorized local test targets only)"
+  systemMessage: "SentinelForge AI - local DevSecOps assessment lab (safe dummy data only)"
   numExecutors: 2
-
   securityRealm:
     local:
       allowsSignup: false
       users:
         - id: "${JENKINS_ADMIN_ID:-admin}"
-          password: "${JENKINS_ADMIN_PASSWORD:-project25-local-demo-only}"
-
+          password: "${JENKINS_ADMIN_PASSWORD:-sentinelforge-local-demo-only}"
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
-
   markupFormatter: plainText
 
 unclassified:
   location:
     url: "http://localhost:8080/"
-    adminAddress: "Project 25 Lab Admin <admin@local.invalid>"
+    adminAddress: "SentinelForge AI Lab Admin <admin@local.invalid>"
 
 jobs:
-  - script: >
-      pipelineJob('project25-baseline-evidence') {
-        displayName('Project 25 - Baseline Evidence')
-
-        description('Assesses an authorized target repository, collects baseline DevSecOps evidence, performs deterministic analysis, and runs advisory AI analysis. No exploitation is performed.')
-
+  - script: |
+      pipelineJob('sentinelforge-ai-assessment') {
+        displayName('SentinelForge AI - Evidence Assessment')
+        description('Assesses only the included safe demo app and produces evidence-led, advisory AI analysis. No exploitation or external target assessment is performed.')
         definition {
           cps {
             sandbox()
-
             script('''pipeline {
               agent any
-
-              options {
-                timestamps()
-                disableConcurrentBuilds()
-              }
-
+              options { timestamps(); disableConcurrentBuilds() }
               stages {
-
                 stage('Confirm lab scope and checkout') {
                   steps {
                     deleteDir()
-
-                    echo "=================================================="
-                    echo "Project 25 - DevSecOps Pipeline Security Assessment"
-                    echo "Authorized assessment only"
-                    echo "No external exploitation is performed"
-                    echo "=================================================="
-
-                    dir('assessment') {
-                      git branch: env.PROJECT25_GIT_BRANCH,
-                          url: env.PROJECT25_GIT_URL
+                    echo 'SentinelForge AI - safe local assessment only; no external targets.'
+                    dir('source') {
+                      git branch: env.SENTINELFORGE_GIT_BRANCH, url: env.SENTINELFORGE_GIT_URL
                     }
-
-                    dir('target') {
-                      git branch: env.TARGET_GIT_BRANCH,
-                          url: env.TARGET_GIT_URL
-                    }
-
                     sh """
                       set -eu
-
-                      test -f assessment/scripts/run-local-assessment.sh
-                      test -f assessment/scripts/build-and-scan-image.sh
-                      test -f assessment/scripts/analyze-evidence.py
-                      test -f assessment/scripts/run-ai-security-analysis.py
-
-                      echo "Assessment repository:"
-                      echo "\\$PROJECT25_GIT_URL"
-                      echo
-
-                      echo "Assessment branch:"
-                      echo "\\$PROJECT25_GIT_BRANCH"
-                      echo
-
-                      echo "Target repository:"
-                      echo "\\$TARGET_GIT_URL"
-                      echo
-
-                      echo "Target branch:"
-                      echo "\\$TARGET_GIT_BRANCH"
+                      test -f source/scripts/run-local-assessment.sh
+                      test -f source/scripts/build-and-scan-image.sh
+                      test -f source/scripts/analyze-evidence.py
+                      test -f source/scripts/run-ai-security-analysis.py
+                      test -f source/demo-app/Dockerfile
                     """
                   }
                 }
-
                 stage('Collect baseline evidence') {
                   steps {
                     sh """
                       set -eu
-
-                      mkdir -p generated
-                      mkdir -p /opt/project25/evidence/generated
-
-                      printf '%s\\\\n' \
-                        "Project 25 baseline assessment" \
-                        "Assessment repository: \\$PROJECT25_GIT_URL" \
-                        "Assessment branch: \\$PROJECT25_GIT_BRANCH" \
-                        "Target repository: \\$TARGET_GIT_URL" \
-                        "Target branch: \\$TARGET_GIT_BRANCH" \
-                        > generated/E001-baseline-scope.txt
-
-                      git -C target rev-parse HEAD \
-                        > generated/E002-target-commit.txt
-
-                      {
-                        echo "Target repository file inventory"
-                        echo "================================"
-                        find target -maxdepth 3 -type f | sort
-                      } > generated/E003-target-file-inventory.txt
-
-                      sha256sum \
-                        generated/E001-baseline-scope.txt \
-                        generated/E002-target-commit.txt \
-                        generated/E003-target-file-inventory.txt \
-                        > generated/E003-checksums.sha256
-
-                      cp generated/* /opt/project25/evidence/generated/
+                      mkdir -p generated /opt/sentinelforge/evidence/generated
+                      printf '%s\\n' \\
+                        'SentinelForge AI local baseline assessment' \\
+                        "Repository: \\$SENTINELFORGE_GIT_URL" \\
+                        "Branch: \\$SENTINELFORGE_GIT_BRANCH" \\
+                        'Scope: included safe demo-app only' > generated/E001-baseline-scope.txt
+                      git -C source rev-parse HEAD > generated/E002-source-commit.txt
+                      find source/demo-app -maxdepth 3 -type f | sort > generated/E003-demo-app-file-inventory.txt
+                      sha256sum generated/E001-baseline-scope.txt generated/E002-source-commit.txt generated/E003-demo-app-file-inventory.txt > generated/E003-checksums.sha256
+                      cp generated/* /opt/sentinelforge/evidence/generated/
                     """
-
-                    archiveArtifacts(
-                      artifacts: 'generated/**',
-                      fingerprint: true
-                    )
+                    archiveArtifacts artifacts: 'generated/**', fingerprint: true
                   }
                 }
-
-                stage('Assess target repository') {
+                stage('Assess safe demo application') {
                   steps {
                     sh """
                       set -eu
-
                       rm -rf scan-results
                       mkdir -p scan-results
-
-                      sh assessment/scripts/run-local-assessment.sh \
-                        target \
-                        scan-results \
-                        /opt/project25/evidence/generated
+                      sh source/scripts/run-local-assessment.sh source/demo-app scan-results /opt/sentinelforge/evidence/generated
                     """
-
-                    archiveArtifacts(
-                      artifacts: 'scan-results/**',
-                      fingerprint: true,
-                      allowEmptyArchive: true
-                    )
+                    archiveArtifacts artifacts: 'scan-results/**', fingerprint: true, allowEmptyArchive: true
                   }
                 }
-
-                stage('Build and scan target container image') {
+                stage('Build and scan demo container') {
                   steps {
                     sh """
                       set -eu
-
                       rm -rf container-results
                       mkdir -p container-results
-
-                      sh assessment/scripts/build-and-scan-image.sh \
-                        target \
-                        container-results \
-                        /opt/project25/evidence/generated
+                      sh source/scripts/build-and-scan-image.sh source/demo-app container-results /opt/sentinelforge/evidence/generated
                     """
-
-                    archiveArtifacts(
-                      artifacts: 'container-results/**',
-                      fingerprint: true,
-                      allowEmptyArchive: true
-                    )
+                    archiveArtifacts artifacts: 'container-results/**', fingerprint: true, allowEmptyArchive: true
                   }
                 }
-
                 stage('Analyze evidence and prepare MITRE review') {
                   steps {
-                    sh """
-                      set -eu
-
-                      rm -rf analysis-results
-                      mkdir -p analysis-results
-
-                      python3 assessment/scripts/analyze-evidence.py \
-                        scan-results \
-                        container-results \
-                        analysis-results \
-                        /opt/project25/evidence/generated
-                    """
-
-                    archiveArtifacts(
-                      artifacts: 'analysis-results/E014-local-analysis-summary.json, analysis-results/E015-mitre-d3fend-review-worksheet.json',
-                      fingerprint: true,
-                      allowEmptyArchive: true
-                    )
+                    sh 'rm -rf analysis-results && mkdir -p analysis-results && python3 source/scripts/analyze-evidence.py scan-results container-results analysis-results /opt/sentinelforge/evidence/generated'
+                    archiveArtifacts artifacts: 'analysis-results/E014-local-analysis-summary.json, analysis-results/E015-mitre-d3fend-review-worksheet.json', fingerprint: true, allowEmptyArchive: true
                   }
                 }
-
                 stage('AI security analysis') {
                   steps {
-                    sh """
-                      set -eu
-
-                      python3 assessment/scripts/run-ai-security-analysis.py \
-                        analysis-results \
-                        /opt/project25/evidence/generated
-                    """
-
-                    archiveArtifacts(
-                      artifacts: 'analysis-results/E016-ai-security-analysis.md, analysis-results/E017-ai-analysis-metadata.json, analysis-results/E018-ai-security-analysis.json',
-                      fingerprint: true,
-                      allowEmptyArchive: true
-                    )
+                    sh 'python3 source/scripts/run-ai-security-analysis.py analysis-results /opt/sentinelforge/evidence/generated'
+                    archiveArtifacts artifacts: 'analysis-results/E016-ai-security-analysis.md, analysis-results/E017-ai-analysis-metadata.json, analysis-results/E018-ai-security-analysis.json', fingerprint: true, allowEmptyArchive: true
                   }
                 }
-
                 stage('Evidence integrity') {
                   steps {
                     sh """
                       set -eu
-
-                      {
-                        echo "Project 25 final evidence checksums"
-                        echo "Generated at: \\$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                        echo
-
-                        find /opt/project25/evidence/generated \
-                          -maxdepth 1 \
-                          -type f \
-                          ! -name 'E019-final-evidence-checksums.sha256' \
-                          -print0 \
-                          | sort -z \
-                          | xargs -0 sha256sum
-
-                      } > generated/E019-final-evidence-checksums.sha256
-
-                      cp generated/E019-final-evidence-checksums.sha256 \
-                        /opt/project25/evidence/generated/
+                      find /opt/sentinelforge/evidence/generated -maxdepth 1 -type f ! -name 'E019-final-evidence-checksums.sha256' -print0 | sort -z | xargs -0 sha256sum > generated/E019-final-evidence-checksums.sha256
+                      cp generated/E019-final-evidence-checksums.sha256 /opt/sentinelforge/evidence/generated/
                     """
-
-                    archiveArtifacts(
-                      artifacts: 'generated/E019-final-evidence-checksums.sha256',
-                      fingerprint: true
-                    )
-                  }
-                }
-
-                stage('Baseline summary') {
-                  steps {
-                    echo "=================================================="
-                    echo "Project 25 baseline assessment completed"
-                    echo "Baseline mode: findings are collected as evidence."
-                    echo "AI authority: advisory only."
-                    echo "ATT&CK/D3FEND mappings require human verification."
-                    echo "Same tests will be repeated after mitigation."
-                    echo "=================================================="
+                    archiveArtifacts artifacts: 'generated/E019-final-evidence-checksums.sha256', fingerprint: true
                   }
                 }
               }
-
               post {
-                always {
-                  echo "Evidence directory: /opt/project25/evidence/generated"
-
-                  archiveArtifacts(
-                    artifacts: 'generated/**, scan-results/**, container-results/**, analysis-results/**',
-                    fingerprint: true,
-                    allowEmptyArchive: true
-                  )
-                }
-
-                success {
-                  echo "Project 25 baseline evidence collection completed successfully."
-                }
-
-                failure {
-                  echo "Project 25 pipeline failed. Review Jenkins console output and generated evidence."
-                }
+                always { archiveArtifacts artifacts: 'generated/**, scan-results/**, container-results/**, analysis-results/**', fingerprint: true, allowEmptyArchive: true }
+                success { echo 'SentinelForge AI assessment completed. AI and mappings require human review.' }
+                failure { echo 'SentinelForge AI assessment failed. Review console output and evidence artifacts.' }
               }
             }''')
           }
