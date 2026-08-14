@@ -25,7 +25,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open Jenkins and sign in with the values in your local `.env` file. Then open **DevShield AI - Evidence Assessment**, choose **Build Now**, and inspect the archived artifacts. The same files are available locally in `evidence/generated/`.
+Open Jenkins and sign in with the values in your local `.env` file. Then open **DevShield AI - Evidence Assessment**, choose **Build with Parameters**, and inspect the archived artifacts. The same files are available locally in `evidence/generated/`. See the detailed [setup and operations guide](docs/setup-and-operations.md).
 
 Stop the lab while retaining Jenkins data:
 

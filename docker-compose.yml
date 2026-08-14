@@ -20,7 +20,7 @@ services:
       - jenkins_home:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
       - ./evidence:/opt/devshield/evidence
-      # Local lab only: permits Jenkins to build and inspect the demo image.
+      # Local lab only: permits Jenkins to build and inspect target images.
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/login >/dev/null"]

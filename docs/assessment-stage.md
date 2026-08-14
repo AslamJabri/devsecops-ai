@@ -8,7 +8,6 @@ The Jenkins job assesses one repository selected in Jenkins Build with Parameter
 | E005 | Bandit | Python static-analysis observations in the target repository | Record results; do not block the baseline build |
 | E006 | pip-audit | Known issues in declared Python dependencies | Record results; do not block the baseline build |
 | E007 | Shell wrapper | Each scanner's exit code | Supports repeatable before/after comparison |
-| E008 | Docker | Built local image metadata | Record image identity for repeatability |
 | E009 | Trivy | Known vulnerabilities in the built image | Record results; do not block the baseline build |
 | E010 | Shell wrapper | Docker build/inspect and Trivy exit codes | Supports repeatable before/after comparison |
 
