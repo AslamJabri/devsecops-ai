@@ -28,6 +28,12 @@ jobs:
             script('''pipeline {
               agent any
               options { timestamps(); disableConcurrentBuilds() }
+              parameters {
+                string(name: 'TARGET_REPOSITORY_URL', defaultValue: '', trim: true, description: 'Repository URL to assess. You must own it or have explicit authorization.')
+                string(name: 'TARGET_BRANCH', defaultValue: 'main', trim: true, description: 'Branch to clone and assess.')
+                string(name: 'TARGET_CREDENTIALS_ID', defaultValue: '', trim: true, description: 'Optional Jenkins credential ID for a private repository. Never enter a token here.')
+                booleanParam(name: 'I_HAVE_AUTHORIZATION', defaultValue: false, description: 'I own this repository or have explicit authorization to assess it.')
+              }
               stages {
                 stage('Confirm lab scope and checkout') {
                   steps {
@@ -37,18 +43,18 @@ jobs:
                       git branch: env.DEVSHIELD_TOOL_GIT_BRANCH, url: env.DEVSHIELD_TOOL_GIT_URL
                     }
                     script {
-                      if (env.DEVSHIELD_AUTHORIZATION_ACK != 'I_HAVE_PERMISSION') {
-                        error('Set DEVSHIELD_AUTHORIZATION_ACK=I_HAVE_PERMISSION before assessing a repository.')
+                      if (!params.I_HAVE_AUTHORIZATION) {
+                        error('Select I_HAVE_AUTHORIZATION before assessing a repository.')
                       }
-                      if (!env.DEVSHIELD_TARGET_GIT_URL?.trim()) {
-                        error('Set DEVSHIELD_TARGET_GIT_URL to an authorized repository before building.')
+                      if (!params.TARGET_REPOSITORY_URL?.trim()) {
+                        error('Enter TARGET_REPOSITORY_URL before building.')
                       }
                     }
                     dir('target') {
-                      if (env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID) {
-                        git branch: env.DEVSHIELD_TARGET_GIT_BRANCH, url: env.DEVSHIELD_TARGET_GIT_URL, credentialsId: env.DEVSHIELD_TARGET_GIT_CREDENTIALS_ID
+                      if (params.TARGET_CREDENTIALS_ID) {
+                        git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL, credentialsId: params.TARGET_CREDENTIALS_ID
                       } else {
-                        git branch: env.DEVSHIELD_TARGET_GIT_BRANCH, url: env.DEVSHIELD_TARGET_GIT_URL
+                        git branch: params.TARGET_BRANCH, url: params.TARGET_REPOSITORY_URL
                       }
                     }
                     sh """
@@ -67,9 +73,9 @@ jobs:
                       mkdir -p generated /opt/devshield/evidence/generated
                       printf '%s\\n' \\
                         'DevShield AI authorized repository assessment' \\
-                        "Target repository: ${env.DEVSHIELD_TARGET_GIT_URL}" \\
-                        "Target branch: ${env.DEVSHIELD_TARGET_GIT_BRANCH}" \\
-                        'Authorization acknowledgment: I_HAVE_PERMISSION' > generated/E001-baseline-scope.txt
+                        "Target repository: ${params.TARGET_REPOSITORY_URL}" \\
+                        "Target branch: ${params.TARGET_BRANCH}" \\
+                        'Authorization acknowledged in Jenkins build parameters' > generated/E001-baseline-scope.txt
                       git -C target rev-parse HEAD > generated/E002-target-commit.txt
                       find target -maxdepth 3 -type f | sort > generated/E003-target-file-inventory.txt
                       sha256sum generated/E001-baseline-scope.txt generated/E002-target-commit.txt generated/E003-target-file-inventory.txt > generated/E003-checksums.sha256

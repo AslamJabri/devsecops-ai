@@ -5,12 +5,11 @@ A small, reproducible macOS-friendly local lab for an evidence-led Jenkins DevSe
 ## What starts
 
 - **Jenkins** at `http://localhost:8080` (or `JENKINS_HTTP_PORT`)
-- **Demo application** at `http://localhost:5001` (or `DEMO_APP_PORT`)
 - A pre-created Jenkins job: **DevShield AI - Evidence Assessment**, which clones one repository you explicitly authorize for assessment
 
 The job clones the repository configured as its authorized target, creates a fingerprinted evidence bundle, and does not run exploit code.
 
-Set `DEVSHIELD_TARGET_GIT_URL`, `DEVSHIELD_TARGET_GIT_BRANCH`, and `DEVSHIELD_AUTHORIZATION_ACK=I_HAVE_PERMISSION` in `.env`. The acknowledgment is required before the job will clone a target. For a private repository, create a Jenkins credential and set only its ID in `DEVSHIELD_TARGET_GIT_CREDENTIALS_ID`; never put a token in `.env`.
+In Jenkins, select **Build with Parameters**. Enter `TARGET_REPOSITORY_URL` and `TARGET_BRANCH`, then select `I_HAVE_AUTHORIZATION`. For a private repository, create a Jenkins credential and enter only its ID in `TARGET_CREDENTIALS_ID`; never put a token in `.env`.
 
 The assessment stages run Gitleaks, Bandit, and pip-audit against the authorized repository, then build its container image when it contains a Dockerfile and scan it with Trivy. They archive evidence for deterministic analysis and advisory Gemini insight. DAST is deliberately deferred to an authorized staging deployment. See [the assessment notes](docs/assessment-stage.md).
 
@@ -28,12 +27,6 @@ docker compose ps
 
 Open Jenkins and sign in with the values in your local `.env` file. Then open **DevShield AI - Evidence Assessment**, choose **Build Now**, and inspect the archived artifacts. The same files are available locally in `evidence/generated/`.
 
-Check the demo service:
-
-```sh
-curl http://localhost:5001/health
-```
-
 Stop the lab while retaining Jenkins data:
 
 ```sh
@@ -44,7 +37,7 @@ For a completely fresh lab state, first stop it, then run `docker compose down -
 
 ## Repository map
 
-`baseline/` contains fictional observations; `demo-app/` contains the harmless app and baseline Jenkinsfile; `jenkins/` contains the Jenkins image and configuration; and `evidence/` holds generated evidence (ignored by Git).
+`demo-app/` is an optional harmless test fixture; DevShield does not run it as a service. `jenkins/` contains the Jenkins image and configuration; `scripts/` contains the scanners and analysis logic; and `evidence/` holds generated evidence (ignored by Git).
 
 ## Safety and assessment order
 

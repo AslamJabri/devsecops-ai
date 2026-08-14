@@ -13,18 +13,12 @@ services:
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-devshield-local-demo-only}
       DEVSHIELD_TOOL_GIT_URL: ${DEVSHIELD_TOOL_GIT_URL:-https://github.com/AslamJabri/devsecops-ai.git}
       DEVSHIELD_TOOL_GIT_BRANCH: ${DEVSHIELD_TOOL_GIT_BRANCH:-main}
-      DEVSHIELD_TARGET_GIT_URL: ${DEVSHIELD_TARGET_GIT_URL:-}
-      DEVSHIELD_TARGET_GIT_BRANCH: ${DEVSHIELD_TARGET_GIT_BRANCH:-main}
-      DEVSHIELD_TARGET_GIT_CREDENTIALS_ID: ${DEVSHIELD_TARGET_GIT_CREDENTIALS_ID:-}
-      DEVSHIELD_AUTHORIZATION_ACK: ${DEVSHIELD_AUTHORIZATION_ACK:-NO}
       JAVA_OPTS: -Djenkins.install.runSetupWizard=false
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
-      - ./demo-app:/opt/devshield/demo-app:ro
-      - ./baseline:/opt/devshield/baseline:ro
       - ./evidence:/opt/devshield/evidence
       # Local lab only: permits Jenkins to build and inspect the demo image.
       - /var/run/docker.sock:/var/run/docker.sock
@@ -34,22 +28,5 @@ services:
       timeout: 5s
       retries: 20
       start_period: 45s
-
-  demo-app:
-    build:
-      context: ./demo-app
-    ports:
-      - "${DEMO_APP_PORT:-5001}:5000"
-    environment:
-      APP_ENV: local-lab
-    read_only: true
-    tmpfs:
-      - /tmp
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
 volumes:
   jenkins_home:

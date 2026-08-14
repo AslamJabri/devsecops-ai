@@ -1,11 +1,11 @@
 # Local assessment stage
 
-The Jenkins job now assesses only the checked-out Project 25 repository with three non-invasive tools:
+The Jenkins job assesses one repository selected in Jenkins Build with Parameters, using non-invasive tools only.
 
 | Evidence | Tool | Check | Baseline behavior |
 | --- | --- | --- | --- |
 | E004 | Gitleaks | Exposed secrets in repository files | Record results; do not block the baseline build |
-| E005 | Bandit | Python static-analysis observations in `demo-app/` | Record results; do not block the baseline build |
+| E005 | Bandit | Python static-analysis observations in the target repository | Record results; do not block the baseline build |
 | E006 | pip-audit | Known issues in declared Python dependencies | Record results; do not block the baseline build |
 | E007 | Shell wrapper | Each scanner's exit code | Supports repeatable before/after comparison |
 | E008 | Docker | Built local image metadata | Record image identity for repeatability |
@@ -22,14 +22,11 @@ DAST is intentionally deferred. It will be run later against an authorized, reac
 ## Live-demo flow
 
 1. Build the updated Jenkins image.
-2. Run **Project 25 - Baseline Evidence**.
-3. Open the archived `scan-results/` artifacts and the local `evidence/generated/` folder.
-4. Treat scanner output as evidence for human analysis, not an automatic conclusion or ATT&CK claim.
+2. Select **Build with Parameters** for **DevShield AI - Evidence Assessment**.
+3. Enter an authorized target repository, branch, and confirm authorization.
+4. Open the archived `scan-results/` artifacts and the local `evidence/generated/` folder.
+5. Treat scanner output as evidence for human analysis, not an automatic conclusion or ATT&CK claim.
 
 ## Container scan boundary
 
-The Jenkins container is given the local Docker Desktop socket only for this lab's build-and-scan stage. It builds `devshield-demo-app:<build number>` from `demo-app/`, scans it locally with Trivy, and does not push it to any registry. This is privileged local-lab access; do not use this Compose configuration for a shared or production Jenkins server. The Docker image pins Trivy to a published release so the demo remains reproducible.
-
-## Passive DAST boundary
-
-The final assessment stage launches OWASP ZAP's baseline scan in a temporary container on the Compose network. Its only target is `http://demo-app:5000`, the local demo service. ZAP's baseline scan spiders the target and reports passive observations; it does not perform active attacks. The temporary container mounts the Jenkins home volume only at ZAP's required report directory, then exits. The ZAP reports are evidence for human review, not automatic vulnerability claims.
+The Jenkins container is given the local Docker Desktop socket only for this lab's build-and-scan stage. When the authorized target includes a Dockerfile, it builds an image locally, scans it with Trivy, and does not push it to any registry. This is privileged local-lab access; do not use this Compose configuration for a shared or production Jenkins server. The Docker image pins Trivy to a published release so the demo remains reproducible.
